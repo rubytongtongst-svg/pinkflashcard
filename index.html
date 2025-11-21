@@ -268,7 +268,10 @@
         let currentDeckName = '我的自创词汇'; 
         let cards = []; 
         let currentIndex = 0;
-        let isMuted = false; // 新增：全局静音状态，默认为 false（有声音）
+        let isMuted = false;
+        
+        // 关键新增：用于存储高质量的日语语音对象
+        let japaneseVoice = null; 
 
         // --- DOM 元素引用 (保持不变) ---
         const cardElement = document.getElementById('flashcard');
@@ -279,6 +282,49 @@
         const answerInput = document.getElementById('answerInput');
         const feedbackElement = document.getElementById('feedback');
         
+        // ====== 语音初始化 (解决发音错误的关键) ======
+        
+        /**
+         * 尝试获取一个高质量的日语声源，存储到 japaneseVoice 变量中
+         */
+        function initializeSpeech() {
+            if (!('speechSynthesis' in window)) return;
+            
+            // 定义一个函数来查找和设置声源
+            const setVoice = () => {
+                const voices = speechSynthesis.getVoices();
+                
+                // 优先选择高质量的日语声源。
+                // 常见的优质声源名称包括：'Kyoko' (苹果/macOS), 'Google 日本語' (Chrome/Android), 'Microsoft Haruka'
+                japaneseVoice = voices.find(voice => 
+                    voice.lang === 'ja-JP' && 
+                    (voice.name.includes('Google') || voice.name.includes('Kyoko') || voice.name.includes('Haruka'))
+                );
+
+                // 如果找不到特定的声源，就退回到找到的第一个 ja-JP 声源
+                if (!japaneseVoice) {
+                    japaneseVoice = voices.find(voice => voice.lang === 'ja-JP');
+                }
+                
+                if (!japaneseVoice) {
+                    console.warn("未找到可用的日语语音包。可能会使用系统默认语言朗读。");
+                } else {
+                    console.log("已加载日语声源:", japaneseVoice.name);
+                }
+                
+                // 加载完成后移除监听器，防止重复执行
+                speechSynthesis.onvoiceschanged = null; 
+            };
+
+            // 检查 voices 是否已加载，否则等待 onvoiceschanged 事件
+            if (speechSynthesis.getVoices().length) {
+                setVoice();
+            } else {
+                // 监听事件，当语音包加载完成后执行
+                speechSynthesis.onvoiceschanged = setVoice;
+            }
+        }
+
         // ====== 核心功能函数：云端保存与加载 (同步的关键) ======
 
         /**
@@ -351,10 +397,8 @@
         }
         
         window.updateUI = function() {
-            // cards 数组已经在 switchDeck 中被正确设置和洗牌
             const displayCards = cards.length === 0 ? [{front: `卡组【${currentDeckName}】`, back: "卡片为空，请在下方添加"}] : cards;
             
-            // 随机模式下，currentIndex 总是随机生成，这里只是为了防止越界
             currentIndex = Math.max(0, Math.min(currentIndex, cards.length - 1));
             
             // 统计信息
@@ -381,8 +425,6 @@
             
             frontElement.innerText = currentCard.front;
             backElement.innerText = currentCard.back.replace(/\s*\(.*\)/g, '');
-            
-            // ⚠️ 注意：此处已移除 readText(currentCard.front, 'zh-CN');
         }
 
         window.flipCard = function() {
@@ -390,10 +432,9 @@
             const card = cards.length > 0 ? cards[currentIndex] : {front: "", back: "请添加卡片"};
             
             if(cardElement.classList.contains('is-flipped')) {
-                // 只保留日语朗读
+                // 仅在翻转到背面时朗读日语
                 readText(card.back.replace(/\s*\(.*\)/g, ''), 'ja-JP'); 
             } 
-            // ⚠️ 注意：此处已移除中文朗读
         }
         
         // ====== 导航与卡组切换函数 ======
@@ -588,9 +629,9 @@
             }
         }
         
-        // ====== 语音和检查答案功能 (已修改) ======
+        // ====== 语音控制函数 ======
 
-        // 新增：静音切换函数
+        // 静音切换函数
         window.toggleMute = function() {
             isMuted = !isMuted;
             const button = document.getElementById('muteButton');
@@ -607,12 +648,12 @@
         }
         
         /**
-         * 朗读文本。中文被禁用，日语受 isMuted 控制。
+         * 朗读文本。中文被禁用，日语受 isMuted 控制，并强制使用高质量声源。
          * @param {string} text 要朗读的文本
          * @param {string} lang 语言代码 ('zh-CN' 或 'ja-JP')
          */
         function readText(text, lang) {
-            // 1. 禁用中文朗读（只要不是 ja-JP 就直接返回）
+            // 1. 禁用中文朗读
             if (lang === 'zh-CN') {
                 return;
             }
@@ -622,13 +663,22 @@
                 return;
             }
             
-            // 3. 正常朗读日语
-            if ('speechSynthesis' in window) {
-                // 清除队列中待朗读的文本，避免多次点击造成语音堆叠
+            // 3. 正常朗读日语，并强制指定声源
+            if (lang === 'ja-JP' && 'speechSynthesis' in window) {
+                // 清除队列中待朗读的文本
                 speechSynthesis.cancel(); 
                 
                 const utterance = new SpeechSynthesisUtterance(text);
                 utterance.lang = lang; 
+                
+                // 强制使用高质量日语声源 (解决发音错误)
+                if (japaneseVoice) {
+                    utterance.voice = japaneseVoice;
+                } else {
+                     // 如果无法找到特定的声源，设置一个较低的语速，减少中文发音的生硬感
+                     utterance.rate = 0.8;
+                }
+                
                 speechSynthesis.speak(utterance);
             }
         }
@@ -659,6 +709,7 @@
         }
 
         // 启动！
+        initializeSpeech();
         loadDecks();
     </script>
 </body>
