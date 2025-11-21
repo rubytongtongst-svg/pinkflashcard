@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0">    <title>我的单词本 (云同步浅粉版)</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0">    <title>我的单词本 (云同步浅粉版)</title>
     <style>
         /* 🎨 样式保持不变：纯净浅粉色，边框加粗 */
         :root {
@@ -148,6 +148,17 @@
 
         .stats { margin-top: 10px; font-size: 0.9rem; color: #64748b; }
         
+        /* === 为添加词汇的输入框添加新样式，确保独占一行且间距舒适 === */
+        .add-section input {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #cbd5e1;
+            border-radius: 6px;
+            box-sizing: border-box; 
+            margin-bottom: 10px; /* 输入框之间的间距 */
+        }
+        /* ========================================================= */
+        
     </style>
 </head>
 <body>
@@ -199,9 +210,13 @@
 
     <div class="add-section">
         <h3>添加到卡组：<span id="currentDeckDisplay" style="color: var(--unified-pink);">我的自创词汇</span></h3>
+        
         <input type="text" id="inputFront" placeholder="正面 (中文词汇/意思)">
         <input type="text" id="inputBack" placeholder="背面 (日语/假名/罗马音)">
-        <button class="btn-add" onclick="addNewCard()">添加并保存到当前卡组</button>
+        
+        <div style="margin-top: 15px;"> 
+            <button class="btn-add" onclick="addNewCard()" style="width: 100%;">添加并保存到当前卡组</button>
+        </div>
     </div>
     
     <script type="module">
