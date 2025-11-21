@@ -166,6 +166,10 @@
 
     <h1>📝 我的单词本 (云同步)</h1>
     
+    <div style="width: 100%; max-width: 400px; text-align: right; margin-bottom: 5px;">
+        <button id="muteButton" class="btn-warn" onclick="toggleMute()">🔇 静音</button>
+    </div>
+
     <div style="margin-bottom: 10px; width: 100%; max-width: 400px; text-align: left;">
         <label for="cardDeckSelect" style="display: block; font-size: 0.9rem; color: #64748b; margin-bottom: 5px;">选择卡组/分类:</label>
         <select id="cardDeckSelect" onchange="switchDeck()" style="width: 100%; padding: 10px; border-radius: 6px; border: 1px solid #cbd5e1;">
@@ -262,8 +266,9 @@
 
         let allDecks = {}; 
         let currentDeckName = '我的自创词汇'; 
-        let cards = []; // 当前学习模式下的卡片列表 (可能是单个卡组的乱序版，也可能是所有卡组的乱序版)
+        let cards = []; 
         let currentIndex = 0;
+        let isMuted = false; // 新增：全局静音状态，默认为 false（有声音）
 
         // --- DOM 元素引用 (保持不变) ---
         const cardElement = document.getElementById('flashcard');
@@ -377,7 +382,7 @@
             frontElement.innerText = currentCard.front;
             backElement.innerText = currentCard.back.replace(/\s*\(.*\)/g, '');
             
-            readText(currentCard.front, 'zh-CN'); 
+            // ⚠️ 注意：此处已移除 readText(currentCard.front, 'zh-CN');
         }
 
         window.flipCard = function() {
@@ -385,10 +390,10 @@
             const card = cards.length > 0 ? cards[currentIndex] : {front: "", back: "请添加卡片"};
             
             if(cardElement.classList.contains('is-flipped')) {
+                // 只保留日语朗读
                 readText(card.back.replace(/\s*\(.*\)/g, ''), 'ja-JP'); 
-            } else {
-                readText(card.front, 'zh-CN'); 
-            }
+            } 
+            // ⚠️ 注意：此处已移除中文朗读
         }
         
         // ====== 导航与卡组切换函数 ======
@@ -407,7 +412,6 @@
                 }
             }
             
-            // 只有当不是 '所有卡片' 模式时才保存索引 (这里不再保存索引，只更新 UI)
             updateUI();
         }
 
@@ -429,7 +433,6 @@
         }
 
         window.addNewCard = async function() {
-            // ... (保持不变) ...
             const f = document.getElementById('inputFront').value.trim();
             const b = document.getElementById('inputBack').value.trim();
             
@@ -551,7 +554,6 @@
         }
 
         window.createNewDeck = async function() {
-            // ... (保持不变) ...
             const newName = prompt("请输入新卡组的名称 (例如: 星期, 家具, N4词汇):");
             if (newName && newName.trim() && !allDecks[newName.trim()]) {
                 const trimmedName = newName.trim();
@@ -586,10 +588,45 @@
             }
         }
         
-        // ====== 语音和检查答案功能 (保持不变) ======
+        // ====== 语音和检查答案功能 (已修改) ======
 
+        // 新增：静音切换函数
+        window.toggleMute = function() {
+            isMuted = !isMuted;
+            const button = document.getElementById('muteButton');
+            
+            if (isMuted) {
+                button.innerHTML = '🔊 开启声音';
+                button.classList.remove('btn-warn');
+                button.classList.add('btn-nav'); // 使用灰色/导航按钮样式
+            } else {
+                button.innerHTML = '🔇 静音';
+                button.classList.remove('btn-nav');
+                button.classList.add('btn-warn'); // 使用黄色/警告按钮样式
+            }
+        }
+        
+        /**
+         * 朗读文本。中文被禁用，日语受 isMuted 控制。
+         * @param {string} text 要朗读的文本
+         * @param {string} lang 语言代码 ('zh-CN' 或 'ja-JP')
+         */
         function readText(text, lang) {
+            // 1. 禁用中文朗读（只要不是 ja-JP 就直接返回）
+            if (lang === 'zh-CN') {
+                return;
+            }
+            
+            // 2. 如果是日语，检查静音状态
+            if (lang === 'ja-JP' && isMuted) {
+                return;
+            }
+            
+            // 3. 正常朗读日语
             if ('speechSynthesis' in window) {
+                // 清除队列中待朗读的文本，避免多次点击造成语音堆叠
+                speechSynthesis.cancel(); 
+                
                 const utterance = new SpeechSynthesisUtterance(text);
                 utterance.lang = lang; 
                 speechSynthesis.speak(utterance);
