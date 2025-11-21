@@ -29,6 +29,7 @@
             padding: 20px;
         }
 
+        /* 标题已修改 */
         h1 { margin-bottom: 20px; font-size: 1.6rem; color: var(--unified-pink); } 
 
         .scene {
@@ -111,6 +112,16 @@
             justify-content: flex-end;
             margin-bottom: 15px; 
         }
+        /* 新增：使编辑控制按钮区域可以容纳更多按钮 */
+        .deck-controls-editor {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap; /* 允许按钮换行 */
+            justify-content: flex-end;
+            width: 100%;
+            max-width: 400px;
+            margin-top: 10px;
+        }
 
         .controls {
             display: flex;
@@ -149,16 +160,65 @@
 
         .stats { margin-top: 10px; font-size: 0.9rem; color: #64748b; }
         
-        /* === 为添加词汇的输入框添加新样式，确保独占一行且间距舒适 === */
+        /* === 添加词汇输入框样式 === */
         .add-section input {
             width: 100%;
             padding: 10px;
             border: 1px solid #cbd5e1;
             border-radius: 6px;
             box-sizing: border-box; 
-            margin-bottom: 10px; /* 输入框之间的间距 */
+            margin-bottom: 10px;
         }
-        /* ========================================================= */
+        
+        /* === 单词列表模态框样式 === */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+        .word-list-modal {
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            width: 90%;
+            max-width: 500px;
+            max-height: 80vh;
+            overflow-y: auto;
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.3);
+        }
+        .word-list-modal h3 {
+            border-bottom: 2px solid var(--unified-pink);
+            padding-bottom: 10px;
+            margin-top: 0;
+        }
+        .word-list-modal ul {
+            list-style: none;
+            padding: 0;
+        }
+        .word-list-modal li {
+            padding: 8px 0;
+            border-bottom: 1px dotted #e2e8f0;
+            font-size: 1rem;
+        }
+        .word-list-modal li strong {
+            display: inline-block;
+            width: 40%;
+            color: var(--unified-pink);
+        }
+        .word-list-modal .close-btn {
+            float: right;
+            background: var(--danger-color);
+            color: white;
+            padding: 5px 10px;
+            cursor: pointer;
+        }
         
     </style>
 </head>
@@ -176,8 +236,9 @@
             </select>
     </div>
     
-    <div class="deck-controls">
+    <div class="deck-controls deck-controls-editor">
         <button id="unlockEditorButton" class="btn-check" onclick="unlockEditor()">🔑 解锁编辑</button>
+        <button class="btn-nav editor-control" style="display: none;" onclick="viewAllWords()">📖 查看所有单词</button>
         <button class="btn-new-deck editor-control" style="display: none;" onclick="createNewDeck()">+ 新卡组</button>
         <button class="btn-warn editor-control" style="display: none;" onclick="deleteDeck()">- 删除卡组</button>
     </div>
@@ -218,10 +279,19 @@
         <h3>添加到卡组：<span id="currentDeckDisplay" style="color: var(--unified-pink);">我的自创词汇</span></h3>
         
         <input type="text" id="inputFront" placeholder="正面 (中文词汇/意思)">
-        <input type="text" id="inputBack" placeholder="背面 (日语/假名/罗马音)">
+        <input type="text" id="inputBack" placeholder="背面 (日语/假名/罗马音，如：先生（せんせい）)">
         
         <div style="margin-top: 15px;"> 
             <button class="btn-add" onclick="addNewCard()" style="width: 100%;">添加并保存到当前卡组</button>
+        </div>
+    </div>
+
+    <div id="wordListModal" class="modal-overlay" style="display: none;">
+        <div class="word-list-modal">
+            <button class="close-btn" onclick="closeWordList()">X 关闭</button>
+            <h3 id="wordListTitle"></h3>
+            <ul id="wordListContent">
+                </ul>
         </div>
     </div>
     
@@ -254,14 +324,14 @@
         // --- 初始数据，用于云端首次加载或连接失败时使用 ---
         const initialDecks = {
             '我的自创词汇': [
-                { front: "日语", back: "日本語" }, 
-                { front: "加油", back: "頑張る" },
-                { front: "我", back: "私" }
+                { front: "日语", back: "日本語（にほんご）" }, // 示例中加入括号
+                { front: "老师", back: "先生（せんせい）" },
+                { front: "我", back: "私（わたし）" }
             ],
             'JLPT N5 基础': [
                 { front: "早上好", back: "おはようございます" },
                 { front: "谢谢", back: "ありがとうございます" },
-                { front: "人", back: "人" }
+                { front: "人", back: "人（ひと）" }
             ]
         };
 
@@ -273,11 +343,11 @@
         let isMuted = false;
         let japaneseVoice = null; 
         
-        // !!! 🔒 密码保护新增变量：请更改此密码为您自己的秘密密码 !!!
+        // !!! 🔒 密码保护新增变量：已为您更新为 Japan !!!
         const EDITOR_PASSWORD = "Japan"; 
         let isEditorUnlocked = false; 
 
-        // --- DOM 元素引用 (保持不变) ---
+        // --- DOM 元素引用 ---
         const cardElement = document.getElementById('flashcard');
         const frontElement = document.getElementById('displayFront');
         const backElement = document.getElementById('displayBack');
@@ -288,23 +358,16 @@
         
         // ====== 语音初始化 (解决发音错误的关键) ======
         
-        /**
-         * 尝试获取一个高质量的日语声源，存储到 japaneseVoice 变量中
-         */
         function initializeSpeech() {
             if (!('speechSynthesis' in window)) return;
             
-            // 定义一个函数来查找和设置声源
             const setVoice = () => {
                 const voices = speechSynthesis.getVoices();
-                
-                // 优先选择高质量的日语声源。
                 japaneseVoice = voices.find(voice => 
                     voice.lang === 'ja-JP' && 
                     (voice.name.includes('Google') || voice.name.includes('Kyoko') || voice.name.includes('Haruka'))
                 );
 
-                // 如果找不到特定的声源，就退回到找到的第一个 ja-JP 声源
                 if (!japaneseVoice) {
                     japaneseVoice = voices.find(voice => voice.lang === 'ja-JP');
                 }
@@ -313,21 +376,18 @@
                     console.log("已加载日语声源:", japaneseVoice.name);
                 }
                 
-                // 加载完成后移除监听器，防止重复执行
                 speechSynthesis.onvoiceschanged = null; 
             };
 
-            // 检查 voices 是否已加载，否则等待 onvoiceschanged 事件
             if (speechSynthesis.getVoices().length) {
                 setVoice();
             } else {
-                // 监听事件，当语音包加载完成后执行
                 speechSynthesis.onvoiceschanged = setVoice;
             }
         }
 
 
-        // ====== 密码控制函数 (新增) ======
+        // ====== 密码控制函数 ======
 
         /**
          * 控制编辑功能 UI 的显示/隐藏
@@ -356,13 +416,12 @@
                 return;
             }
 
-            // 使用 prompt 输入密码
             const inputPassword = prompt("请输入编辑密码以解锁功能：");
 
             if (inputPassword === EDITOR_PASSWORD) {
                 isEditorUnlocked = true;
                 updateEditorUI();
-                alert("编辑功能已成功解锁！请开始添加/删除卡片。");
+                alert("编辑功能已成功解锁！");
             } else if (inputPassword !== null && inputPassword !== "") {
                 alert("密码错误，编辑功能未解锁。");
             }
@@ -409,10 +468,9 @@
                 alert("❗ 错误：无法连接到云数据库！正在使用本地默认数据。");
             }
             
-            // 初始化 UI，包括卡组选择和编辑功能（默认锁定）
             populateDeckSelect();
             switchDeck(currentDeckName, false); 
-            updateEditorUI(); // 初始加载时调用，确保编辑功能是锁定的
+            updateEditorUI(); 
         }
 
         // ====== 导航与 UI 更新 (包含随机化逻辑) ======
@@ -452,7 +510,8 @@
             const currentCard = displayCards[actualIndex];
             
             frontElement.innerText = currentCard.front;
-            backElement.innerText = currentCard.back.replace(/\s*\(.*\)/g, '');
+            // 🎯 修复 1/3: 卡片背面现在显示完整内容，包括括号
+            backElement.innerText = currentCard.back; 
         }
 
         window.flipCard = function() {
@@ -460,11 +519,13 @@
             const card = cards.length > 0 ? cards[currentIndex] : {front: "", back: "请添加卡片"};
             
             if(cardElement.classList.contains('is-flipped')) {
-                readText(card.back.replace(/\s*\(.*\)/g, ''), 'ja-JP'); 
+                // 🎯 修复 1/3: 朗读时清除括号内容，避免朗读 (せんせい)
+                const textToRead = card.back.replace(/\s*\(.*\)/g, '').trim(); 
+                readText(textToRead, 'ja-JP'); 
             } 
         }
         
-        // ====== 卡片/卡组编辑函数 (添加密码检查) ======
+        // ====== 核心编辑/管理函数 ======
 
         window.addNewCard = async function() {
             if (!isEditorUnlocked) {
@@ -527,6 +588,40 @@
             }
         }
         
+        // --- 修复 2/3: 查看所有单词功能 ---
+
+        window.viewAllWords = function() {
+            if (!isEditorUnlocked) {
+                alert("请先点击【解锁编辑】按钮并输入密码。");
+                return;
+            }
+            
+            const listContent = document.getElementById('wordListContent');
+            const titleElement = document.getElementById('wordListTitle');
+            const currentDeckCards = allDecks[currentDeckName] || []; // 使用原始卡组数据
+            
+            titleElement.innerText = `【${currentDeckName}】中的所有单词 (${currentDeckCards.length})`;
+            listContent.innerHTML = '';
+
+            if (currentDeckCards.length === 0) {
+                listContent.innerHTML = '<li>该卡组为空。</li>';
+            } else {
+                currentDeckCards.forEach(card => {
+                    const li = document.createElement('li');
+                    li.innerHTML = `<strong>${card.front}</strong>：${card.back}`;
+                    listContent.appendChild(li);
+                });
+            }
+
+            document.getElementById('wordListModal').style.display = 'flex'; // 显示模态框
+        }
+
+        window.closeWordList = function() {
+            document.getElementById('wordListModal').style.display = 'none'; // 隐藏模态框
+        }
+        
+        // --- 其他管理/导航函数 (不变) ---
+
         window.createNewDeck = async function() {
             if (!isEditorUnlocked) {
                 alert("请先点击【解锁编辑】按钮并输入密码。");
@@ -572,8 +667,6 @@
             }
         }
         
-        // --- 通用函数 (无需密码保护) ---
-
         window.nextCard = async function() {
             if (cards.length === 0) return; 
             
@@ -664,7 +757,7 @@
             else updateUI();
         }
 
-        // ====== 语音和检查答案功能 ======
+        // ====== 语音和答案检查功能 ======
 
         // 静音切换函数
         window.toggleMute = function() {
@@ -683,17 +776,12 @@
         }
         
         function readText(text, lang) {
-            if (lang === 'zh-CN') {
+            if (lang === 'zh-CN' || isMuted || !('speechSynthesis' in window)) {
                 return;
             }
             
-            if (lang === 'ja-JP' && isMuted) {
-                return;
-            }
-            
-            if (lang === 'ja-JP' && 'speechSynthesis' in window) {
+            if (lang === 'ja-JP') {
                 speechSynthesis.cancel(); 
-                
                 const utterance = new SpeechSynthesisUtterance(text);
                 utterance.lang = lang; 
                 
@@ -715,9 +803,24 @@
 
             const card = cards[currentIndex];
             const actual = answerInput.value.toLowerCase().trim();
-            const expected = card.back.toLowerCase().replace(/\s*\(.*\)/g, '').trim(); 
+            const backContent = card.back.toLowerCase().trim(); // 保持完整内容
+
+            let acceptableAnswers = [];
+            const regex = /(.+)\s*[（(](\S+)[)）]/; // 匹配 "base (reading)" 格式
+            const match = backContent.match(regex);
             
-            if (actual === expected) {
+            if (match) {
+                // 修复 3/3: 接受汉字和假名两种答案
+                const kanji = match[1].trim(); 
+                const kana = match[2].trim(); 
+                acceptableAnswers.push(kanji);
+                acceptableAnswers.push(kana);
+            } else {
+                // 如果没有括号，则整个背面内容都是答案
+                acceptableAnswers.push(backContent);
+            }
+
+            if (acceptableAnswers.includes(actual)) {
                 feedbackElement.innerText = "🎉 正确！";
                 feedbackElement.style.color = 'var(--success-color)';
                 
@@ -726,7 +829,8 @@
                 }, 700);
                 
             } else {
-                feedbackElement.innerText = "❌ 错误，请重试或翻转卡片。";
+                // 在反馈中显示所有可接受的答案，帮助用户理解
+                feedbackElement.innerText = `❌ 错误。答案可以是: ${acceptableAnswers.join(' 或 ')}。`;
                 feedbackElement.style.color = 'var(--danger-color)';
             }
         }
