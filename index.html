@@ -2,7 +2,8 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0">    <title>我的单词本 (云同步浅粉版)</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0">    
+    <title>我的单词本 (云同步浅粉版)</title>
     <style>
         /* 🎨 样式保持不变：纯净浅粉色，边框加粗 */
         :root {
@@ -261,7 +262,7 @@
 
         let allDecks = {}; 
         let currentDeckName = '我的自创词汇'; 
-        let cards = []; 
+        let cards = []; // 当前学习模式下的卡片列表 (可能是单个卡组的乱序版，也可能是所有卡组的乱序版)
         let currentIndex = 0;
 
         // --- DOM 元素引用 (保持不变) ---
@@ -276,14 +277,15 @@
         // ====== 核心功能函数：云端保存与加载 (同步的关键) ======
 
         /**
-         * [云同步] 将数据保存到 Firestore 云数据库
+         * [云同步] 将数据保存到 Firestore 云数据库 (不保存随机顺序)
          */
         async function saveDecks() {
             try {
+                // 确保我们只保存原始数据和当前选择的卡组名称
                 const docData = {
                     decks: allDecks,
                     currentDeck: currentDeckName,
-                    currentIndex: currentIndex
+                    // 不保存 currentIndex，每次加载后从 0 开始
                 };
                 await setDoc(doc(db, USER_COLLECTION, USER_DOC_ID), docData);
                 console.log("数据已成功保存到云端。");
@@ -309,7 +311,7 @@
                     // 加载云端数据
                     allDecks = data.decks || initialDecks;
                     currentDeckName = data.currentDeck || Object.keys(allDecks)[0];
-                    currentIndex = data.currentIndex || 0;
+                    currentIndex = 0; // 强制从 0 开始，每次加载都重新洗牌
                     console.log("数据已从云端加载。");
                 } else {
                     // 云端没有数据，使用初始数据并首次保存到云端
@@ -332,16 +334,28 @@
             switchDeck(currentDeckName, false); // 首次加载不触发二次保存
         }
 
-        // ====== 导航与 UI 更新 (保持不变) ======
+        // ====== 导航与 UI 更新 (包含随机化逻辑) ======
+
+        // 专业的 Fisher-Yates 洗牌算法
+        function shuffleArray(array) {
+            for (let i = array.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [array[i], array[j]] = [array[j], array[i]];
+            }
+            return array;
+        }
         
         window.updateUI = function() {
-            cards = allDecks[currentDeckName] || [];
+            // cards 数组已经在 switchDeck 中被正确设置和洗牌
             const displayCards = cards.length === 0 ? [{front: `卡组【${currentDeckName}】`, back: "卡片为空，请在下方添加"}] : cards;
             
+            // 随机模式下，currentIndex 总是随机生成，这里只是为了防止越界
             currentIndex = Math.max(0, Math.min(currentIndex, cards.length - 1));
             
+            // 统计信息
             document.getElementById('totalCount').innerText = cards.length;
             document.getElementById('currentIndex').innerText = cards.length === 0 ? 0 : currentIndex + 1;
+            
             deckDisplay.innerText = currentDeckName; 
             feedbackElement.innerText = ''; 
             answerInput.value = ''; 
@@ -377,29 +391,45 @@
             }
         }
         
-        // ====== 带有保存操作的函数：使用 async/await 调用 saveDecks() ======
+        // ====== 导航与卡组切换函数 ======
 
         window.nextCard = async function() {
             if (cards.length === 0) return; 
+            
             if (currentIndex < cards.length - 1) {
                 currentIndex++;
             } else {
-                currentIndex = 0; 
+                currentIndex = 0; // 循环到第一张
+                // 达到末尾后，重新洗牌，确保下一轮是全新的随机顺序
+                if(currentDeckName !== '请添加新卡组') {
+                    switchDeck(currentDeckName, false);
+                    return; 
+                }
             }
-            await saveDecks(); 
+            
+            // 只有当不是 '所有卡片' 模式时才保存索引 (这里不再保存索引，只更新 UI)
+            updateUI();
         }
 
         window.prevCard = async function() {
             if (cards.length === 0) return; 
+            
             if (currentIndex > 0) {
                 currentIndex--;
             } else {
-                currentIndex = cards.length - 1; 
+                currentIndex = cards.length - 1; // 循环到最后一张
+                // 达到开头后，重新洗牌
+                if(currentDeckName !== '请添加新卡组') {
+                    switchDeck(currentDeckName, false);
+                    return;
+                }
             }
-            await saveDecks(); 
+            
+            updateUI();
         }
 
         window.addNewCard = async function() {
+            // ... (保持不变) ...
             const f = document.getElementById('inputFront').value.trim();
             const b = document.getElementById('inputBack').value.trim();
             
@@ -417,9 +447,9 @@
             document.getElementById('inputFront').value = '';
             document.getElementById('inputBack').value = '';
             
-            cards = allDecks[currentDeckName];
-            currentIndex = cards.length - 1;
+            // 添加新卡片后，重新加载并洗牌当前卡组
             await saveDecks(); 
+            switchDeck(currentDeckName, false); // 重新洗牌，让新卡片出现
         }
 
         window.deleteCurrentCard = async function() {
@@ -428,52 +458,100 @@
                 return;
             }
             
+            // 注意：删除操作必须针对原始数据 allDecks，而不是当前随机的 cards 数组
+            if(currentDeckName === '所有卡片 (随机)') {
+                alert("请切换到具体的卡组进行删除操作，'所有卡片'模式下无法删除。");
+                return;
+            }
+
             if(confirm(`确定要从【${currentDeckName}】中删除这张卡片吗？`)) {
-                allDecks[currentDeckName].splice(currentIndex, 1);
                 
-                cards = allDecks[currentDeckName];
+                // 找出当前卡片在原始卡组 allDecks 中的索引
+                const cardToDelete = cards[currentIndex];
+                const originalDeck = allDecks[currentDeckName];
                 
-                if (currentIndex >= cards.length) {
-                    currentIndex = Math.max(0, cards.length - 1);
+                const originalIndex = originalDeck.findIndex(card => 
+                    card.front === cardToDelete.front && card.back === cardToDelete.back
+                );
+
+                if (originalIndex > -1) {
+                     originalDeck.splice(originalIndex, 1);
                 }
                 
+                // 删除后，保存并重新加载当前卡组 (会重新洗牌)
                 await saveDecks(); 
                 switchDeck(currentDeckName, false);
             }
         }
-
+        
         // --- 卡组管理函数 ---
         
         function populateDeckSelect() {
             deckSelect.innerHTML = '';
             const deckNames = Object.keys(allDecks).sort();
+            
             if (deckNames.length === 0) {
                  deckNames.push("请添加新卡组");
                  allDecks["请添加新卡组"] = [];
             }
+            
+            // --- 添加 '所有卡片' 选项 ---
+            const totalCount = deckNames.reduce((sum, name) => {
+                if(name !== '请添加新卡组') return sum + allDecks[name].length;
+                return sum;
+            }, 0);
+            
+            const allOption = document.createElement('option');
+            allOption.value = '所有卡片 (随机)';
+            allOption.innerText = `所有卡片 (总数: ${totalCount})`;
+            deckSelect.appendChild(allOption);
+            // ------------------------------------
+
             deckNames.forEach(name => {
                 const option = document.createElement('option');
                 option.value = name;
                 option.innerText = `${name} (${allDecks[name].length})`;
                 deckSelect.appendChild(option);
             });
+            
             deckSelect.value = currentDeckName;
         }
         
         window.switchDeck = async function(deckName = deckSelect.value, shouldSave = true) {
             currentDeckName = deckName;
-            cards = allDecks[currentDeckName] || [];
-            currentIndex = 0;
             
+            // 1. 获取原始卡片列表
+            if (currentDeckName === '所有卡片 (随机)') {
+                let allCards = [];
+                Object.keys(allDecks).forEach(deck => {
+                    if (deck !== '请添加新卡组') {
+                         allCards = allCards.concat(allDecks[deck]);
+                    }
+                });
+                cards = allCards;
+            } else {
+                cards = allDecks[currentDeckName] || [];
+            }
+            
+            // 2. 强制随机洗牌 (满足所有卡组都随机的需求)
+            if (cards.length > 0) {
+                cards = shuffleArray([...cards]); // 使用副本进行洗牌
+            }
+
+            currentIndex = 0; // 切换卡组后从第一张（即洗牌后的第一张）开始
+            
+            // 3. 处理空卡组显示
             if(cards.length === 0) {
                 cards = [{front: `卡组【${currentDeckName}】`, back: "卡片为空，请在下方添加"}];
             }
             
-            if (shouldSave) await saveDecks(); 
+            // 4. 保存卡组名 (但不保存索引)
+            if (shouldSave && currentDeckName !== '所有卡片 (随机)') await saveDecks(); 
             else updateUI();
         }
 
         window.createNewDeck = async function() {
+            // ... (保持不变) ...
             const newName = prompt("请输入新卡组的名称 (例如: 星期, 家具, N4词汇):");
             if (newName && newName.trim() && !allDecks[newName.trim()]) {
                 const trimmedName = newName.trim();
@@ -488,6 +566,11 @@
         }
 
         window.deleteDeck = async function() {
+            if(currentDeckName === '所有卡片 (随机)') {
+                alert("请先切换到具体的卡组再进行删除操作。");
+                return;
+            }
+
             const deckNames = Object.keys(allDecks);
             if (deckNames.length <= 1) {
                 alert("这是最后一个卡组，不能删除！请手动删除卡片或新建卡组后再删除。");
@@ -496,7 +579,7 @@
             if (confirm(`⚠️ 确定要删除整个卡组【${currentDeckName}】吗？\n所有 ${allDecks[currentDeckName].length} 张卡片都将永久丢失！`)) {
                 delete allDecks[currentDeckName];
                 const remainingDeckNames = Object.keys(allDecks);
-                currentDeckName = remainingDeckNames[0];
+                currentDeckName = remainingDeckNames.find(name => name !== '所有卡片 (随机)') || remainingDeckNames[0];
                 await saveDecks();
                 populateDeckSelect(); 
                 switchDeck(currentDeckName, false);
@@ -529,7 +612,7 @@
                 feedbackElement.style.color = 'var(--success-color)';
                 
                 setTimeout(() => {
-                    window.nextCard(); // 调用 async 函数
+                    window.nextCard(); // 调用 nextCard，它会处理下一个随机卡片
                 }, 700);
                 
             } else {
