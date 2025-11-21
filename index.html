@@ -1,0 +1,507 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"> 
+    <title>我的单词本 (纯净浅粉版)</title>
+    <style>
+        /* 🎨 统一所有粉色为最浅、最柔和的色调 */
+        :root {
+            --unified-pink: #ffc0cb; /* 最浅的粉色 (Pink) */
+            --unified-pink-light: #fff5ee; /* 更浅的粉色作为背景 (SeaShell) */
+            --bg-color: #fcfcfc; /* 接近白色，保持清爽 */
+            --card-bg: #ffffff;
+            --text-main: #333333; /* 深灰文本 */
+            --success-color: #66bb6a; /* 成功绿 */
+            --warning-color: #ffa726; /* 警告橙 */
+            --danger-color: #ef5350; /* 危险红 */
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px;
+        }
+
+        h1 { margin-bottom: 20px; font-size: 1.6rem; color: var(--unified-pink); } 
+
+        /* --- 单词卡区域 --- */
+        .scene {
+            width: 100%;
+            max-width: 400px;
+            height: 260px;
+            perspective: 1000px;
+            margin: 20px 0;
+            cursor: pointer;
+        }
+
+        .card {
+            width: 100%;
+            height: 100%;
+            position: relative;
+            transition: transform 0.6s;
+            transform-style: preserve-3d;
+            border-radius: 16px;
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.05);
+        }
+
+        .card.is-flipped {
+            transform: rotateY(180deg);
+        }
+
+        .card-face {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            backface-visibility: hidden;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            background-color: var(--card-bg);
+            border-radius: 16px;
+            padding: 20px;
+            box-sizing: border-box;
+            /* 单词卡边框加粗两倍 */
+            border: 8px solid var(--unified-pink); 
+        }
+
+        .card-face.front { font-size: 2.5rem; font-weight: 700; color: var(--text-main); } 
+        .card-face.back { 
+            transform: rotateY(180deg); 
+            background-color: var(--unified-pink-light); 
+            font-size: 1.8rem; 
+            color: var(--text-main); 
+        }
+
+        .hint { font-size: 0.8rem; color: #94a3b8; margin-top: 10px; position: absolute; bottom: 15px;}
+
+        /* --- 按钮样式 --- */
+        button {
+            padding: 10px 15px;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-size: 0.9rem;
+        }
+
+        .btn-nav { background-color: white; border: 1px solid #cbd5e1; color: #475569; }
+        .btn-nav:hover { background-color: #f0f0f0; }
+
+        /* 按钮颜色统一浅粉色 */
+        .btn-check { background-color: var(--unified-pink); color: white; } 
+        .btn-check:hover { background-color: #ffb1c0; } 
+        
+        .btn-new-deck, .btn-add { background-color: var(--unified-pink); color: white; }
+        .btn-new-deck:hover, .btn-add:hover { background-color: #ffb1c0; } 
+
+        .btn-del { background-color: #ffe0e0; color: var(--danger-color); }
+        .btn-warn { background-color: #fff8e1; color: var(--warning-color); border: 1px solid #ffcc80; } 
+        .btn-warn:hover { background-color: #ffedc1; }
+
+        /* --- 布局容器 --- */
+        
+        .deck-controls {
+            display: flex;
+            gap: 10px;
+            width: 100%;
+            max-width: 400px;
+            justify-content: flex-end;
+            margin-bottom: 15px; 
+        }
+
+        .controls {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 30px;
+        }
+        
+        /* --- 打字测试区样式 --- */
+        .typing-section {
+            width: 100%;
+            max-width: 400px;
+            padding: 20px;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+            margin-bottom: 20px;
+        }
+        .typing-section h3 { margin-top: 0; font-size: 1.1rem; color: var(--text-main);}
+        .typing-input-group {
+            display: flex;
+            gap: 10px;
+        }
+        #answerInput {
+            flex-grow: 1;
+            padding: 10px;
+            /* 输入框边框也改为统一浅粉色 */
+            border: 1px solid var(--unified-pink); 
+            border-radius: 6px;
+        }
+        .feedback {
+            margin-top: 10px;
+            font-weight: 600;
+            height: 20px; 
+            color: var(--danger-color);
+        }
+
+        /* --- 添加新卡片区域 --- */
+        .add-section {
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            width: 100%;
+            max-width: 400px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
+        
+        input {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 10px;
+            border: 1px solid #cbd5e1;
+            border-radius: 6px;
+            box-sizing: border-box;
+            transition: all 0.2s;
+        }
+        input:focus {
+            outline: none;
+            border-color: var(--unified-pink); 
+            box-shadow: 0 0 0 2px var(--unified-pink-light); 
+        }
+
+        .stats { margin-top: 10px; font-size: 0.9rem; color: #64748b; }
+        
+    </style>
+</head>
+<body>
+
+    <h1>📝 我的单词本</h1>
+    
+    <div style="margin-bottom: 10px; width: 100%; max-width: 400px; text-align: left;">
+        <label for="cardDeckSelect" style="display: block; font-size: 0.9rem; color: #64748b; margin-bottom: 5px;">选择卡组/分类:</label>
+        <select id="cardDeckSelect" onchange="switchDeck()" style="width: 100%; padding: 10px; border-radius: 6px; border: 1px solid #cbd5e1;">
+            </select>
+    </div>
+    
+    <div class="deck-controls">
+        <button class="btn-new-deck" onclick="createNewDeck()">+ 新卡组</button>
+        <button class="btn-warn" onclick="deleteDeck()">- 删除卡组</button>
+    </div>
+    
+    <div class="stats">当前: <span id="currentIndex">0</span> / 总数: <span id="totalCount">0</span></div>
+
+    <div class="scene" onclick="flipCard()">
+        <div class="card" id="flashcard">
+            <div class="card-face front">
+                <span id="displayFront">Loading...</span>
+                <div class="hint">点击翻看答案</div>
+            </div>
+            <div class="card-face back">
+                <span id="displayBack">...</span>
+            </div>
+        </div>
+    </div>
+    
+    <div class="typing-section">
+        <h3>⌨️ 打字模式 (中文 -> 日语)</h3>
+        <div class="typing-input-group">
+            <input type="text" id="answerInput" placeholder="请输入日语答案 (按 Enter 提交)" onkeydown="if(event.key === 'Enter') checkAnswer()">
+            <button class="btn-check" onclick="checkAnswer()">检查答案</button>
+        </div>
+        <div id="feedback" class="feedback"></div>
+    </div>
+
+
+    <div class="controls">
+        <button class="btn-nav" onclick="prevCard()">← 上一个</button>
+        <button class="btn-del" onclick="deleteCurrentCard()">删除这张</button>
+        <button class="btn-nav" onclick="nextCard()">下一个 →</button>
+    </div>
+
+    <hr style="width: 100%; max-width: 400px; border: 0; border-top: 1px solid #e2e8f0; margin-bottom: 20px;">
+
+    <div class="add-section">
+        <h3>添加到卡组：<span id="currentDeckDisplay" style="color: var(--unified-pink);">我的自创词汇</span></h3>
+        <input type="text" id="inputFront" placeholder="正面 (中文词汇/意思)">
+        <input type="text" id="inputBack" placeholder="背面 (日语/假名/罗马音)">
+        <button class="btn-add" onclick="addNewCard()">添加并保存到当前卡组</button>
+    </div>
+    
+    <script>
+        // --- 初始数据，用于第一次加载 ---
+        const initialDecks = {
+            '我的自创词汇': [
+                { front: "日语", back: "日本語" }, 
+                { front: "加油", back: "頑張る" },
+                { front: "我", back: "私" }
+            ],
+            'JLPT N5 基础': [
+                { front: "早上好", back: "おはようございます" },
+                { front: "谢谢", back: "ありがとうございます" },
+                { front: "人", back: "人" }
+            ]
+        };
+
+        let allDecks = {}; 
+        let currentDeckName = '我的自创词汇'; 
+        let cards = []; 
+        let currentIndex = 0;
+
+        // --- DOM 元素引用 ---
+        const cardElement = document.getElementById('flashcard');
+        const frontElement = document.getElementById('displayFront');
+        const backElement = document.getElementById('displayBack');
+        const deckSelect = document.getElementById('cardDeckSelect');
+        const deckDisplay = document.getElementById('currentDeckDisplay');
+        const answerInput = document.getElementById('answerInput');
+        const feedbackElement = document.getElementById('feedback');
+
+
+        // ====== 核心功能函数：保存与加载 ======
+
+        function saveDecks() {
+            try {
+                localStorage.setItem('myFlashcardsDecks', JSON.stringify(allDecks));
+            } catch (e) {
+                console.error("无法保存数据到本地存储:", e);
+                // 仅在本地文件运行时可能出现此警告
+                alert("❗ 警告：无法保存您的单词数据！\n如果您是在线访问，请检查浏览器设置。如果是本地文件，请尝试使用在线托管服务（如 GitHub Pages）。");
+            }
+            updateUI();
+        }
+
+        function loadDecks() {
+            const storedDecks = localStorage.getItem('myFlashcardsDecks');
+            if (storedDecks) {
+                allDecks = JSON.parse(storedDecks);
+            } else {
+                allDecks = initialDecks;
+            }
+            
+            if (!allDecks[currentDeckName]) {
+                currentDeckName = Object.keys(allDecks)[0] || '我的自创词汇';
+            }
+            
+            populateDeckSelect();
+            switchDeck(currentDeckName);
+        }
+
+        // ====== 核心功能函数：UI 更新与导航 ======
+        
+        function updateUI() {
+            cards = allDecks[currentDeckName] || [];
+            const displayCards = cards.length === 0 ? [{front: `卡组【${currentDeckName}】`, back: "卡片为空，请在下方添加"}] : cards;
+            
+            currentIndex = Math.max(0, Math.min(currentIndex, cards.length - 1));
+            
+            document.getElementById('totalCount').innerText = cards.length;
+            document.getElementById('currentIndex').innerText = cards.length === 0 ? 0 : currentIndex + 1;
+            deckDisplay.innerText = currentDeckName; 
+            feedbackElement.innerText = ''; 
+            answerInput.value = ''; 
+
+            if (cardElement.classList.contains('is-flipped')) {
+                cardElement.classList.remove('is-flipped');
+                setTimeout(() => setCardText(displayCards), 250);
+            } else {
+                setCardText(displayCards);
+            }
+            
+            populateDeckSelect(); 
+        }
+
+        function setCardText(displayCards) {
+            const actualIndex = Math.min(currentIndex, displayCards.length - 1);
+            const currentCard = displayCards[actualIndex];
+            
+            frontElement.innerText = currentCard.front;
+            backElement.innerText = currentCard.back.replace(/\s*\(.*\)/g, '');
+            
+            readText(currentCard.front, 'zh-CN'); 
+        }
+
+        window.flipCard = function() {
+            cardElement.classList.toggle('is-flipped');
+            const card = cards.length > 0 ? cards[currentIndex] : {front: "", back: "请添加卡片"};
+            
+            if(cardElement.classList.contains('is-flipped')) {
+                readText(card.back.replace(/\s*\(.*\)/g, ''), 'ja-JP'); 
+            } else {
+                readText(card.front, 'zh-CN'); 
+            }
+        }
+        
+        window.nextCard = function() {
+            if (cards.length === 0) return; 
+            if (currentIndex < cards.length - 1) {
+                currentIndex++;
+            } else {
+                currentIndex = 0; 
+            }
+            updateUI();
+        }
+
+        window.prevCard = function() {
+            if (cards.length === 0) return; 
+            if (currentIndex > 0) {
+                currentIndex--;
+            } else {
+                currentIndex = cards.length - 1; 
+            }
+            updateUI();
+        }
+
+        // ====== 核心功能函数：增删改查 ======
+        
+        window.addNewCard = function() {
+            const f = document.getElementById('inputFront').value.trim();
+            const b = document.getElementById('inputBack').value.trim();
+            
+            if (!f || !b) {
+                alert("⚠️ 错误提示：正面和背面都要写哦！");
+                return;
+            }
+
+            if (allDecks[currentDeckName]) {
+                allDecks[currentDeckName].push({ front: f, back: b });
+            } else {
+                allDecks[currentDeckName] = [{ front: f, back: b }];
+            }
+            
+            document.getElementById('inputFront').value = '';
+            document.getElementById('inputBack').value = '';
+            
+            cards = allDecks[currentDeckName];
+            currentIndex = cards.length - 1;
+            saveDecks(); 
+        }
+
+        window.deleteCurrentCard = function() {
+            if(cards.length === 0 || cards[currentIndex].front.includes('卡组【')) {
+                alert("当前卡组中没有可删除的单词！");
+                return;
+            }
+            
+            if(confirm(`确定要从【${currentDeckName}】中删除这张卡片吗？`)) {
+                allDecks[currentDeckName].splice(currentIndex, 1);
+                
+                cards = allDecks[currentDeckName];
+                
+                if (currentIndex >= cards.length) {
+                    currentIndex = Math.max(0, cards.length - 1);
+                }
+                
+                saveDecks(); 
+                switchDeck(currentDeckName);
+            }
+        }
+
+        // --- 卡组管理函数 ---
+        
+        function populateDeckSelect() {
+            deckSelect.innerHTML = '';
+            const deckNames = Object.keys(allDecks).sort();
+            if (deckNames.length === 0) {
+                 deckNames.push("请添加新卡组");
+                 allDecks["请添加新卡组"] = [];
+            }
+            deckNames.forEach(name => {
+                const option = document.createElement('option');
+                option.value = name;
+                option.innerText = `${name} (${allDecks[name].length})`;
+                deckSelect.appendChild(option);
+            });
+            deckSelect.value = currentDeckName;
+        }
+        
+        window.switchDeck = function(deckName = deckSelect.value) {
+            currentDeckName = deckName;
+            cards = allDecks[currentDeckName] || [];
+            currentIndex = 0;
+            
+            if(cards.length === 0) {
+                cards = [{front: `卡组【${currentDeckName}】`, back: "卡片为空，请在下方添加"}];
+            }
+            
+            saveDecks(); 
+        }
+
+        window.createNewDeck = function() {
+            const newName = prompt("请输入新卡组的名称 (例如: 星期, 家具, N4词汇):");
+            if (newName && newName.trim() && !allDecks[newName.trim()]) {
+                const trimmedName = newName.trim();
+                allDecks[trimmedName] = [];
+                currentDeckName = trimmedName;
+                populateDeckSelect();
+                saveDecks();
+                switchDeck(currentDeckName);
+            } else if (newName) {
+                alert("卡组名称无效或已存在！");
+            }
+        }
+
+        window.deleteDeck = function() {
+            const deckNames = Object.keys(allDecks);
+            if (deckNames.length <= 1) {
+                alert("这是最后一个卡组，不能删除！请手动删除卡片或新建卡组后再删除。");
+                return;
+            }
+            if (confirm(`⚠️ 确定要删除整个卡组【${currentDeckName}】吗？\n所有 ${allDecks[currentDeckName].length} 张卡片都将永久丢失！`)) {
+                delete allDecks[currentDeckName];
+                const remainingDeckNames = Object.keys(allDecks);
+                currentDeckName = remainingDeckNames[0];
+                saveDecks();
+                populateDeckSelect(); 
+                switchDeck(currentDeckName);
+            }
+        }
+        
+        // ====== 打字测试和语音功能 ======
+
+        function readText(text, lang) {
+            if ('speechSynthesis' in window) {
+                const utterance = new SpeechSynthesisUtterance(text);
+                utterance.lang = lang; 
+                speechSynthesis.speak(utterance);
+            }
+        }
+        
+        window.checkAnswer = function() {
+            if (cards.length === 0 || cards[currentIndex].front.includes('卡组【')) {
+                feedbackElement.innerText = "请先添加卡片！";
+                return;
+            }
+
+            const card = cards[currentIndex];
+            const actual = answerInput.value.toLowerCase().trim();
+            
+            const expected = card.back.toLowerCase().replace(/\s*\(.*\)/g, '').trim(); 
+            
+            if (actual === expected) {
+                feedbackElement.innerText = "🎉 正确！";
+                feedbackElement.style.color = 'var(--success-color)';
+                
+                setTimeout(() => {
+                    nextCard();
+                }, 700);
+                
+            } else {
+                feedbackElement.innerText = "❌ 错误，请重试或翻转卡片。";
+                feedbackElement.style.color = 'var(--danger-color)';
+            }
+        }
+
+        // 启动！
+        loadDecks();
+    </script>
+</body>
+</html>
