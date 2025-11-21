@@ -177,8 +177,9 @@
     </div>
     
     <div class="deck-controls">
-        <button class="btn-new-deck" onclick="createNewDeck()">+ 新卡组</button>
-        <button class="btn-warn" onclick="deleteDeck()">- 删除卡组</button>
+        <button id="unlockEditorButton" class="btn-check" onclick="unlockEditor()">🔑 解锁编辑</button>
+        <button class="btn-new-deck editor-control" style="display: none;" onclick="createNewDeck()">+ 新卡组</button>
+        <button class="btn-warn editor-control" style="display: none;" onclick="deleteDeck()">- 删除卡组</button>
     </div>
     
     <div class="stats">当前: <span id="currentIndex">0</span> / 总数: <span id="totalCount">0</span></div>
@@ -207,13 +208,13 @@
 
     <div class="controls">
         <button class="btn-nav" onclick="prevCard()">← 上一个</button>
-        <button class="btn-del" onclick="deleteCurrentCard()">删除这张</button>
+        <button class="btn-del editor-control" style="display: none;" onclick="deleteCurrentCard()">删除这张</button>
         <button class="btn-nav" onclick="nextCard()">下一个 →</button>
     </div>
 
     <hr style="width: 100%; max-width: 400px; border: 0; border-top: 1px solid #e2e8f0; margin-bottom: 20px;">
 
-    <div class="add-section">
+    <div class="add-section editor-control" style="display: none;">
         <h3>添加到卡组：<span id="currentDeckDisplay" style="color: var(--unified-pink);">我的自创词汇</span></h3>
         
         <input type="text" id="inputFront" placeholder="正面 (中文词汇/意思)">
@@ -264,14 +265,17 @@
             ]
         };
 
+        // --- 核心状态变量 ---
         let allDecks = {}; 
         let currentDeckName = '我的自创词汇'; 
         let cards = []; 
         let currentIndex = 0;
         let isMuted = false;
-        
-        // 关键新增：用于存储高质量的日语语音对象
         let japaneseVoice = null; 
+        
+        // !!! 🔒 密码保护新增变量：请更改此密码为您自己的秘密密码 !!!
+        const EDITOR_PASSWORD = "Japan"; 
+        let isEditorUnlocked = false; 
 
         // --- DOM 元素引用 (保持不变) ---
         const cardElement = document.getElementById('flashcard');
@@ -295,7 +299,6 @@
                 const voices = speechSynthesis.getVoices();
                 
                 // 优先选择高质量的日语声源。
-                // 常见的优质声源名称包括：'Kyoko' (苹果/macOS), 'Google 日本語' (Chrome/Android), 'Microsoft Haruka'
                 japaneseVoice = voices.find(voice => 
                     voice.lang === 'ja-JP' && 
                     (voice.name.includes('Google') || voice.name.includes('Kyoko') || voice.name.includes('Haruka'))
@@ -306,9 +309,7 @@
                     japaneseVoice = voices.find(voice => voice.lang === 'ja-JP');
                 }
                 
-                if (!japaneseVoice) {
-                    console.warn("未找到可用的日语语音包。可能会使用系统默认语言朗读。");
-                } else {
+                if (japaneseVoice) {
                     console.log("已加载日语声源:", japaneseVoice.name);
                 }
                 
@@ -325,33 +326,65 @@
             }
         }
 
-        // ====== 核心功能函数：云端保存与加载 (同步的关键) ======
+
+        // ====== 密码控制函数 (新增) ======
 
         /**
-         * [云同步] 将数据保存到 Firestore 云数据库 (不保存随机顺序)
+         * 控制编辑功能 UI 的显示/隐藏
          */
+        function updateEditorUI() {
+            const isLocked = !isEditorUnlocked;
+            
+            // 1. 隐藏/显示所有标记为 'editor-control' 的元素
+            document.querySelectorAll('.editor-control').forEach(el => {
+                el.style.display = isLocked ? 'none' : '';
+            });
+            
+            // 2. 切换解锁按钮的显示
+            const unlockButton = document.getElementById('unlockEditorButton');
+            if(unlockButton) {
+                unlockButton.style.display = isLocked ? '' : 'none';
+            }
+        }
+        
+        /**
+         * 提示用户输入密码并解锁编辑功能
+         */
+        window.unlockEditor = function() {
+            if (isEditorUnlocked) {
+                alert("编辑功能已解锁。");
+                return;
+            }
+
+            // 使用 prompt 输入密码
+            const inputPassword = prompt("请输入编辑密码以解锁功能：");
+
+            if (inputPassword === EDITOR_PASSWORD) {
+                isEditorUnlocked = true;
+                updateEditorUI();
+                alert("编辑功能已成功解锁！请开始添加/删除卡片。");
+            } else if (inputPassword !== null && inputPassword !== "") {
+                alert("密码错误，编辑功能未解锁。");
+            }
+        }
+
+        // ====== 核心功能函数：云端保存与加载 ======
+
         async function saveDecks() {
             try {
-                // 确保我们只保存原始数据和当前选择的卡组名称
                 const docData = {
                     decks: allDecks,
                     currentDeck: currentDeckName,
-                    // 不保存 currentIndex，每次加载后从 0 开始
                 };
                 await setDoc(doc(db, USER_COLLECTION, USER_DOC_ID), docData);
                 console.log("数据已成功保存到云端。");
             } catch (e) {
                 console.error("保存到云端失败:", e);
-                // 提示用户同步失败
                 document.getElementById('feedback').innerText = "❌ 警告：同步失败，请检查网络！";
             }
-            // 无论同步是否成功，都更新界面显示
             updateUI();
         }
 
-        /**
-         * [云同步] 从 Firestore 云数据库加载数据
-         */
         async function loadDecks() {
             try {
                 const docRef = doc(db, USER_COLLECTION, USER_DOC_ID);
@@ -359,13 +392,11 @@
 
                 if (docSnap.exists()) {
                     const data = docSnap.data();
-                    // 加载云端数据
                     allDecks = data.decks || initialDecks;
                     currentDeckName = data.currentDeck || Object.keys(allDecks)[0];
-                    currentIndex = 0; // 强制从 0 开始，每次加载都重新洗牌
+                    currentIndex = 0; 
                     console.log("数据已从云端加载。");
                 } else {
-                    // 云端没有数据，使用初始数据并首次保存到云端
                     allDecks = initialDecks;
                     currentDeckName = Object.keys(allDecks)[0];
                     console.log("云端数据为空，使用初始数据并尝试同步。");
@@ -373,21 +404,19 @@
                 }
             } catch (e) {
                 console.error("加载云端数据失败:", e);
-                // 严重失败时退回到初始数据，确保应用可用
                 allDecks = initialDecks;
                 currentDeckName = Object.keys(allDecks)[0];
                 alert("❗ 错误：无法连接到云数据库！正在使用本地默认数据。");
             }
             
-            // 无论加载状态如何，都进行界面初始化
+            // 初始化 UI，包括卡组选择和编辑功能（默认锁定）
             populateDeckSelect();
-            // loadDecks是异步的，必须在最后调用 switchDeck来保证更新
-            switchDeck(currentDeckName, false); // 首次加载不触发二次保存
+            switchDeck(currentDeckName, false); 
+            updateEditorUI(); // 初始加载时调用，确保编辑功能是锁定的
         }
 
         // ====== 导航与 UI 更新 (包含随机化逻辑) ======
 
-        // 专业的 Fisher-Yates 洗牌算法
         function shuffleArray(array) {
             for (let i = array.length - 1; i > 0; i--) {
                 const j = Math.floor(Math.random() * (i + 1));
@@ -401,7 +430,6 @@
             
             currentIndex = Math.max(0, Math.min(currentIndex, cards.length - 1));
             
-            // 统计信息
             document.getElementById('totalCount').innerText = cards.length;
             document.getElementById('currentIndex').innerText = cards.length === 0 ? 0 : currentIndex + 1;
             
@@ -432,48 +460,18 @@
             const card = cards.length > 0 ? cards[currentIndex] : {front: "", back: "请添加卡片"};
             
             if(cardElement.classList.contains('is-flipped')) {
-                // 仅在翻转到背面时朗读日语
                 readText(card.back.replace(/\s*\(.*\)/g, ''), 'ja-JP'); 
             } 
         }
         
-        // ====== 导航与卡组切换函数 ======
-
-        window.nextCard = async function() {
-            if (cards.length === 0) return; 
-            
-            if (currentIndex < cards.length - 1) {
-                currentIndex++;
-            } else {
-                currentIndex = 0; // 循环到第一张
-                // 达到末尾后，重新洗牌，确保下一轮是全新的随机顺序
-                if(currentDeckName !== '请添加新卡组') {
-                    switchDeck(currentDeckName, false);
-                    return; 
-                }
-            }
-            
-            updateUI();
-        }
-
-        window.prevCard = async function() {
-            if (cards.length === 0) return; 
-            
-            if (currentIndex > 0) {
-                currentIndex--;
-            } else {
-                currentIndex = cards.length - 1; // 循环到最后一张
-                // 达到开头后，重新洗牌
-                if(currentDeckName !== '请添加新卡组') {
-                    switchDeck(currentDeckName, false);
-                    return;
-                }
-            }
-            
-            updateUI();
-        }
+        // ====== 卡片/卡组编辑函数 (添加密码检查) ======
 
         window.addNewCard = async function() {
+            if (!isEditorUnlocked) {
+                alert("请先点击【解锁编辑】按钮并输入密码。");
+                return;
+            }
+
             const f = document.getElementById('inputFront').value.trim();
             const b = document.getElementById('inputBack').value.trim();
             
@@ -491,18 +489,21 @@
             document.getElementById('inputFront').value = '';
             document.getElementById('inputBack').value = '';
             
-            // 添加新卡片后，重新加载并洗牌当前卡组
             await saveDecks(); 
-            switchDeck(currentDeckName, false); // 重新洗牌，让新卡片出现
+            switchDeck(currentDeckName, false);
         }
 
         window.deleteCurrentCard = async function() {
+            if (!isEditorUnlocked) {
+                alert("请先点击【解锁编辑】按钮并输入密码。");
+                return;
+            }
+
             if(cards.length === 0 || cards[currentIndex].front.includes('卡组【')) {
                 alert("当前卡组中没有可删除的单词！");
                 return;
             }
             
-            // 注意：删除操作必须针对原始数据 allDecks，而不是当前随机的 cards 数组
             if(currentDeckName === '所有卡片 (随机)') {
                 alert("请切换到具体的卡组进行删除操作，'所有卡片'模式下无法删除。");
                 return;
@@ -510,7 +511,6 @@
 
             if(confirm(`确定要从【${currentDeckName}】中删除这张卡片吗？`)) {
                 
-                // 找出当前卡片在原始卡组 allDecks 中的索引
                 const cardToDelete = cards[currentIndex];
                 const originalDeck = allDecks[currentDeckName];
                 
@@ -522,79 +522,17 @@
                      originalDeck.splice(originalIndex, 1);
                 }
                 
-                // 删除后，保存并重新加载当前卡组 (会重新洗牌)
                 await saveDecks(); 
                 switchDeck(currentDeckName, false);
             }
         }
         
-        // --- 卡组管理函数 ---
-        
-        function populateDeckSelect() {
-            deckSelect.innerHTML = '';
-            const deckNames = Object.keys(allDecks).sort();
-            
-            if (deckNames.length === 0) {
-                 deckNames.push("请添加新卡组");
-                 allDecks["请添加新卡组"] = [];
-            }
-            
-            // --- 添加 '所有卡片' 选项 ---
-            const totalCount = deckNames.reduce((sum, name) => {
-                if(name !== '请添加新卡组') return sum + allDecks[name].length;
-                return sum;
-            }, 0);
-            
-            const allOption = document.createElement('option');
-            allOption.value = '所有卡片 (随机)';
-            allOption.innerText = `所有卡片 (总数: ${totalCount})`;
-            deckSelect.appendChild(allOption);
-            // ------------------------------------
-
-            deckNames.forEach(name => {
-                const option = document.createElement('option');
-                option.value = name;
-                option.innerText = `${name} (${allDecks[name].length})`;
-                deckSelect.appendChild(option);
-            });
-            
-            deckSelect.value = currentDeckName;
-        }
-        
-        window.switchDeck = async function(deckName = deckSelect.value, shouldSave = true) {
-            currentDeckName = deckName;
-            
-            // 1. 获取原始卡片列表
-            if (currentDeckName === '所有卡片 (随机)') {
-                let allCards = [];
-                Object.keys(allDecks).forEach(deck => {
-                    if (deck !== '请添加新卡组') {
-                         allCards = allCards.concat(allDecks[deck]);
-                    }
-                });
-                cards = allCards;
-            } else {
-                cards = allDecks[currentDeckName] || [];
-            }
-            
-            // 2. 强制随机洗牌 (满足所有卡组都随机的需求)
-            if (cards.length > 0) {
-                cards = shuffleArray([...cards]); // 使用副本进行洗牌
-            }
-
-            currentIndex = 0; // 切换卡组后从第一张（即洗牌后的第一张）开始
-            
-            // 3. 处理空卡组显示
-            if(cards.length === 0) {
-                cards = [{front: `卡组【${currentDeckName}】`, back: "卡片为空，请在下方添加"}];
-            }
-            
-            // 4. 保存卡组名 (但不保存索引)
-            if (shouldSave && currentDeckName !== '所有卡片 (随机)') await saveDecks(); 
-            else updateUI();
-        }
-
         window.createNewDeck = async function() {
+            if (!isEditorUnlocked) {
+                alert("请先点击【解锁编辑】按钮并输入密码。");
+                return;
+            }
+
             const newName = prompt("请输入新卡组的名称 (例如: 星期, 家具, N4词汇):");
             if (newName && newName.trim() && !allDecks[newName.trim()]) {
                 const trimmedName = newName.trim();
@@ -609,6 +547,11 @@
         }
 
         window.deleteDeck = async function() {
+            if (!isEditorUnlocked) {
+                alert("请先点击【解锁编辑】按钮并输入密码。");
+                return;
+            }
+            
             if(currentDeckName === '所有卡片 (随机)') {
                 alert("请先切换到具体的卡组再进行删除操作。");
                 return;
@@ -629,7 +572,99 @@
             }
         }
         
-        // ====== 语音控制函数 ======
+        // --- 通用函数 (无需密码保护) ---
+
+        window.nextCard = async function() {
+            if (cards.length === 0) return; 
+            
+            if (currentIndex < cards.length - 1) {
+                currentIndex++;
+            } else {
+                currentIndex = 0; 
+                if(currentDeckName !== '请添加新卡组') {
+                    switchDeck(currentDeckName, false);
+                    return; 
+                }
+            }
+            
+            updateUI();
+        }
+
+        window.prevCard = async function() {
+            if (cards.length === 0) return; 
+            
+            if (currentIndex > 0) {
+                currentIndex--;
+            } else {
+                currentIndex = cards.length - 1; 
+                if(currentDeckName !== '请添加新卡组') {
+                    switchDeck(currentDeckName, false);
+                    return;
+                }
+            }
+            
+            updateUI();
+        }
+        
+        function populateDeckSelect() {
+            deckSelect.innerHTML = '';
+            const deckNames = Object.keys(allDecks).sort();
+            
+            if (deckNames.length === 0) {
+                 deckNames.push("请添加新卡组");
+                 allDecks["请添加新卡组"] = [];
+            }
+            
+            const totalCount = deckNames.reduce((sum, name) => {
+                if(name !== '请添加新卡组') return sum + allDecks[name].length;
+                return sum;
+            }, 0);
+            
+            const allOption = document.createElement('option');
+            allOption.value = '所有卡片 (随机)';
+            allOption.innerText = `所有卡片 (总数: ${totalCount})`;
+            deckSelect.appendChild(allOption);
+
+            deckNames.forEach(name => {
+                const option = document.createElement('option');
+                option.value = name;
+                option.innerText = `${name} (${allDecks[name].length})`;
+                deckSelect.appendChild(option);
+            });
+            
+            deckSelect.value = currentDeckName;
+        }
+        
+        window.switchDeck = async function(deckName = deckSelect.value, shouldSave = true) {
+            currentDeckName = deckName;
+            
+            if (currentDeckName === '所有卡片 (随机)') {
+                let allCards = [];
+                Object.keys(allDecks).forEach(deck => {
+                    if (deck !== '请添加新卡组') {
+                         allCards = allCards.concat(allDecks[deck]);
+                    }
+                });
+                cards = allCards;
+            } else {
+                cards = allDecks[currentDeckName] || [];
+            }
+            
+            if (cards.length > 0) {
+                cards = shuffleArray([...cards]); 
+            }
+
+            currentIndex = 0; 
+            
+            if(cards.length === 0) {
+                cards = [{front: `卡组【${currentDeckName}】`, back: "卡片为空，请在下方添加"}];
+            }
+            
+            if (shouldSave && currentDeckName !== '所有卡片 (随机)') await saveDecks(); 
+            else updateUI();
+        }
+
+        // ====== 语音和检查答案功能 ======
 
         // 静音切换函数
         window.toggleMute = function() {
@@ -639,43 +674,32 @@
             if (isMuted) {
                 button.innerHTML = '🔊 开启声音';
                 button.classList.remove('btn-warn');
-                button.classList.add('btn-nav'); // 使用灰色/导航按钮样式
+                button.classList.add('btn-nav'); 
             } else {
                 button.innerHTML = '🔇 静音';
                 button.classList.remove('btn-nav');
-                button.classList.add('btn-warn'); // 使用黄色/警告按钮样式
+                button.classList.add('btn-warn'); 
             }
         }
         
-        /**
-         * 朗读文本。中文被禁用，日语受 isMuted 控制，并强制使用高质量声源。
-         * @param {string} text 要朗读的文本
-         * @param {string} lang 语言代码 ('zh-CN' 或 'ja-JP')
-         */
         function readText(text, lang) {
-            // 1. 禁用中文朗读
             if (lang === 'zh-CN') {
                 return;
             }
             
-            // 2. 如果是日语，检查静音状态
             if (lang === 'ja-JP' && isMuted) {
                 return;
             }
             
-            // 3. 正常朗读日语，并强制指定声源
             if (lang === 'ja-JP' && 'speechSynthesis' in window) {
-                // 清除队列中待朗读的文本
                 speechSynthesis.cancel(); 
                 
                 const utterance = new SpeechSynthesisUtterance(text);
                 utterance.lang = lang; 
                 
-                // 强制使用高质量日语声源 (解决发音错误)
                 if (japaneseVoice) {
                     utterance.voice = japaneseVoice;
                 } else {
-                     // 如果无法找到特定的声源，设置一个较低的语速，减少中文发音的生硬感
                      utterance.rate = 0.8;
                 }
                 
@@ -691,7 +715,6 @@
 
             const card = cards[currentIndex];
             const actual = answerInput.value.toLowerCase().trim();
-            
             const expected = card.back.toLowerCase().replace(/\s*\(.*\)/g, '').trim(); 
             
             if (actual === expected) {
@@ -699,7 +722,7 @@
                 feedbackElement.style.color = 'var(--success-color)';
                 
                 setTimeout(() => {
-                    window.nextCard(); // 调用 nextCard，它会处理下一个随机卡片
+                    window.nextCard(); 
                 }, 700);
                 
             } else {
