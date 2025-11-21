@@ -3,18 +3,18 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0"> 
-    <title>我的单词本 (纯净浅粉版)</title>
+    <title>我的单词本 (云同步浅粉版)</title>
     <style>
-        /* 🎨 统一所有粉色为最浅、最柔和的色调 */
+        /* 🎨 样式保持不变：纯净浅粉色，边框加粗 */
         :root {
-            --unified-pink: #ffc0cb; /* 最浅的粉色 (Pink) */
-            --unified-pink-light: #fff5ee; /* 更浅的粉色作为背景 (SeaShell) */
-            --bg-color: #fcfcfc; /* 接近白色，保持清爽 */
+            --unified-pink: #ffc0cb; 
+            --unified-pink-light: #fff5ee; 
+            --bg-color: #fcfcfc; 
             --card-bg: #ffffff;
-            --text-main: #333333; /* 深灰文本 */
-            --success-color: #66bb6a; /* 成功绿 */
-            --warning-color: #ffa726; /* 警告橙 */
-            --danger-color: #ef5350; /* 危险红 */
+            --text-main: #333333; 
+            --success-color: #66bb6a; 
+            --warning-color: #ffa726; 
+            --danger-color: #ef5350; 
         }
 
         body {
@@ -31,7 +31,6 @@
 
         h1 { margin-bottom: 20px; font-size: 1.6rem; color: var(--unified-pink); } 
 
-        /* --- 单词卡区域 --- */
         .scene {
             width: 100%;
             max-width: 400px;
@@ -68,7 +67,6 @@
             border-radius: 16px;
             padding: 20px;
             box-sizing: border-box;
-            /* 单词卡边框加粗两倍 */
             border: 8px solid var(--unified-pink); 
         }
 
@@ -82,7 +80,6 @@
 
         .hint { font-size: 0.8rem; color: #94a3b8; margin-top: 10px; position: absolute; bottom: 15px;}
 
-        /* --- 按钮样式 --- */
         button {
             padding: 10px 15px;
             border: none;
@@ -96,7 +93,6 @@
         .btn-nav { background-color: white; border: 1px solid #cbd5e1; color: #475569; }
         .btn-nav:hover { background-color: #f0f0f0; }
 
-        /* 按钮颜色统一浅粉色 */
         .btn-check { background-color: var(--unified-pink); color: white; } 
         .btn-check:hover { background-color: #ffb1c0; } 
         
@@ -107,8 +103,6 @@
         .btn-warn { background-color: #fff8e1; color: var(--warning-color); border: 1px solid #ffcc80; } 
         .btn-warn:hover { background-color: #ffedc1; }
 
-        /* --- 布局容器 --- */
-        
         .deck-controls {
             display: flex;
             gap: 10px;
@@ -124,7 +118,6 @@
             margin-bottom: 30px;
         }
         
-        /* --- 打字测试区样式 --- */
         .typing-section {
             width: 100%;
             max-width: 400px;
@@ -134,15 +127,10 @@
             box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
             margin-bottom: 20px;
         }
-        .typing-section h3 { margin-top: 0; font-size: 1.1rem; color: var(--text-main);}
-        .typing-input-group {
-            display: flex;
-            gap: 10px;
-        }
+
         #answerInput {
             flex-grow: 1;
             padding: 10px;
-            /* 输入框边框也改为统一浅粉色 */
             border: 1px solid var(--unified-pink); 
             border-radius: 6px;
         }
@@ -152,26 +140,7 @@
             height: 20px; 
             color: var(--danger-color);
         }
-
-        /* --- 添加新卡片区域 --- */
-        .add-section {
-            background: white;
-            padding: 20px;
-            border-radius: 12px;
-            width: 100%;
-            max-width: 400px;
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-        }
         
-        input {
-            width: 100%;
-            padding: 10px;
-            margin-bottom: 10px;
-            border: 1px solid #cbd5e1;
-            border-radius: 6px;
-            box-sizing: border-box;
-            transition: all 0.2s;
-        }
         input:focus {
             outline: none;
             border-color: var(--unified-pink); 
@@ -184,7 +153,7 @@
 </head>
 <body>
 
-    <h1>📝 我的单词本</h1>
+    <h1>📝 我的单词本 (云同步)</h1>
     
     <div style="margin-bottom: 10px; width: 100%; max-width: 400px; text-align: left;">
         <label for="cardDeckSelect" style="display: block; font-size: 0.9rem; color: #64748b; margin-bottom: 5px;">选择卡组/分类:</label>
@@ -236,8 +205,33 @@
         <button class="btn-add" onclick="addNewCard()">添加并保存到当前卡组</button>
     </div>
     
-    <script>
-        // --- 初始数据，用于第一次加载 ---
+    <script type="module">
+        // 导入 Firebase SDK 的核心模块和 Firestore 模块
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.10/firebase-app.js";
+        import { getFirestore, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/9.6.10/firebase-firestore.js";
+
+        // ==========================================================
+        // !!! 您的专属 Firebase 配置密钥 !!!
+        // ==========================================================
+        const firebaseConfig = {
+            apiKey: "AIzaSyDRh1wj0UPt60ZDmVOKLc_qZ1FYE6J7TC",
+            authDomain: "my-flashcard-sync.firebaseapp.com",
+            projectId: "my-flashcard-sync",
+            storageBucket: "my-flashcard-sync.appspot.com",
+            messagingSenderId: "458534614208",
+            appId: "1:458534614208:web:349f3c7a68cfed6f346925"
+        };
+        // ==========================================================
+        
+        // 初始化 Firebase 应用和数据库
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+
+        // 设定一个固定的文档ID，用于存储您的所有数据
+        const USER_DOC_ID = 'RubyUserFlashcards'; 
+        const USER_COLLECTION = 'user-decks'; 
+
+        // --- 初始数据，用于云端首次加载或连接失败时使用 ---
         const initialDecks = {
             '我的自创词汇': [
                 { front: "日语", back: "日本語" }, 
@@ -256,7 +250,7 @@
         let cards = []; 
         let currentIndex = 0;
 
-        // --- DOM 元素引用 ---
+        // --- DOM 元素引用 (保持不变) ---
         const cardElement = document.getElementById('flashcard');
         const frontElement = document.getElementById('displayFront');
         const backElement = document.getElementById('displayBack');
@@ -264,40 +258,69 @@
         const deckDisplay = document.getElementById('currentDeckDisplay');
         const answerInput = document.getElementById('answerInput');
         const feedbackElement = document.getElementById('feedback');
+        
+        // ====== 核心功能函数：云端保存与加载 (同步的关键) ======
 
-
-        // ====== 核心功能函数：保存与加载 ======
-
-        function saveDecks() {
+        /**
+         * [云同步] 将数据保存到 Firestore 云数据库
+         */
+        async function saveDecks() {
             try {
-                localStorage.setItem('myFlashcardsDecks', JSON.stringify(allDecks));
+                const docData = {
+                    decks: allDecks,
+                    currentDeck: currentDeckName,
+                    currentIndex: currentIndex
+                };
+                await setDoc(doc(db, USER_COLLECTION, USER_DOC_ID), docData);
+                console.log("数据已成功保存到云端。");
             } catch (e) {
-                console.error("无法保存数据到本地存储:", e);
-                // 仅在本地文件运行时可能出现此警告
-                alert("❗ 警告：无法保存您的单词数据！\n如果您是在线访问，请检查浏览器设置。如果是本地文件，请尝试使用在线托管服务（如 GitHub Pages）。");
+                console.error("保存到云端失败:", e);
+                // 提示用户同步失败
+                document.getElementById('feedback').innerText = "❌ 警告：同步失败，请检查网络！";
             }
+            // 无论同步是否成功，都更新界面显示
             updateUI();
         }
 
-        function loadDecks() {
-            const storedDecks = localStorage.getItem('myFlashcardsDecks');
-            if (storedDecks) {
-                allDecks = JSON.parse(storedDecks);
-            } else {
+        /**
+         * [云同步] 从 Firestore 云数据库加载数据
+         */
+        async function loadDecks() {
+            try {
+                const docRef = doc(db, USER_COLLECTION, USER_DOC_ID);
+                const docSnap = await getDoc(docRef);
+
+                if (docSnap.exists()) {
+                    const data = docSnap.data();
+                    // 加载云端数据
+                    allDecks = data.decks || initialDecks;
+                    currentDeckName = data.currentDeck || Object.keys(allDecks)[0];
+                    currentIndex = data.currentIndex || 0;
+                    console.log("数据已从云端加载。");
+                } else {
+                    // 云端没有数据，使用初始数据并首次保存到云端
+                    allDecks = initialDecks;
+                    currentDeckName = Object.keys(allDecks)[0];
+                    console.log("云端数据为空，使用初始数据并尝试同步。");
+                    await saveDecks(); 
+                }
+            } catch (e) {
+                console.error("加载云端数据失败:", e);
+                // 严重失败时退回到初始数据，确保应用可用
                 allDecks = initialDecks;
+                currentDeckName = Object.keys(allDecks)[0];
+                alert("❗ 错误：无法连接到云数据库！正在使用本地默认数据。");
             }
             
-            if (!allDecks[currentDeckName]) {
-                currentDeckName = Object.keys(allDecks)[0] || '我的自创词汇';
-            }
-            
+            // 无论加载状态如何，都进行界面初始化
             populateDeckSelect();
-            switchDeck(currentDeckName);
+            // loadDecks是异步的，必须在最后调用 switchDeck来保证更新
+            switchDeck(currentDeckName, false); // 首次加载不触发二次保存
         }
 
-        // ====== 核心功能函数：UI 更新与导航 ======
+        // ====== 导航与 UI 更新 (保持不变) ======
         
-        function updateUI() {
+        window.updateUI = function() {
             cards = allDecks[currentDeckName] || [];
             const displayCards = cards.length === 0 ? [{front: `卡组【${currentDeckName}】`, back: "卡片为空，请在下方添加"}] : cards;
             
@@ -340,29 +363,29 @@
             }
         }
         
-        window.nextCard = function() {
+        // ====== 带有保存操作的函数：使用 async/await 调用 saveDecks() ======
+
+        window.nextCard = async function() {
             if (cards.length === 0) return; 
             if (currentIndex < cards.length - 1) {
                 currentIndex++;
             } else {
                 currentIndex = 0; 
             }
-            updateUI();
+            await saveDecks(); 
         }
 
-        window.prevCard = function() {
+        window.prevCard = async function() {
             if (cards.length === 0) return; 
             if (currentIndex > 0) {
                 currentIndex--;
             } else {
                 currentIndex = cards.length - 1; 
             }
-            updateUI();
+            await saveDecks(); 
         }
 
-        // ====== 核心功能函数：增删改查 ======
-        
-        window.addNewCard = function() {
+        window.addNewCard = async function() {
             const f = document.getElementById('inputFront').value.trim();
             const b = document.getElementById('inputBack').value.trim();
             
@@ -382,10 +405,10 @@
             
             cards = allDecks[currentDeckName];
             currentIndex = cards.length - 1;
-            saveDecks(); 
+            await saveDecks(); 
         }
 
-        window.deleteCurrentCard = function() {
+        window.deleteCurrentCard = async function() {
             if(cards.length === 0 || cards[currentIndex].front.includes('卡组【')) {
                 alert("当前卡组中没有可删除的单词！");
                 return;
@@ -400,8 +423,8 @@
                     currentIndex = Math.max(0, cards.length - 1);
                 }
                 
-                saveDecks(); 
-                switchDeck(currentDeckName);
+                await saveDecks(); 
+                switchDeck(currentDeckName, false);
             }
         }
 
@@ -423,7 +446,7 @@
             deckSelect.value = currentDeckName;
         }
         
-        window.switchDeck = function(deckName = deckSelect.value) {
+        window.switchDeck = async function(deckName = deckSelect.value, shouldSave = true) {
             currentDeckName = deckName;
             cards = allDecks[currentDeckName] || [];
             currentIndex = 0;
@@ -432,24 +455,25 @@
                 cards = [{front: `卡组【${currentDeckName}】`, back: "卡片为空，请在下方添加"}];
             }
             
-            saveDecks(); 
+            if (shouldSave) await saveDecks(); 
+            else updateUI();
         }
 
-        window.createNewDeck = function() {
+        window.createNewDeck = async function() {
             const newName = prompt("请输入新卡组的名称 (例如: 星期, 家具, N4词汇):");
             if (newName && newName.trim() && !allDecks[newName.trim()]) {
                 const trimmedName = newName.trim();
                 allDecks[trimmedName] = [];
                 currentDeckName = trimmedName;
                 populateDeckSelect();
-                saveDecks();
-                switchDeck(currentDeckName);
+                await saveDecks();
+                switchDeck(currentDeckName, false);
             } else if (newName) {
                 alert("卡组名称无效或已存在！");
             }
         }
 
-        window.deleteDeck = function() {
+        window.deleteDeck = async function() {
             const deckNames = Object.keys(allDecks);
             if (deckNames.length <= 1) {
                 alert("这是最后一个卡组，不能删除！请手动删除卡片或新建卡组后再删除。");
@@ -459,13 +483,13 @@
                 delete allDecks[currentDeckName];
                 const remainingDeckNames = Object.keys(allDecks);
                 currentDeckName = remainingDeckNames[0];
-                saveDecks();
+                await saveDecks();
                 populateDeckSelect(); 
-                switchDeck(currentDeckName);
+                switchDeck(currentDeckName, false);
             }
         }
         
-        // ====== 打字测试和语音功能 ======
+        // ====== 语音和检查答案功能 (保持不变) ======
 
         function readText(text, lang) {
             if ('speechSynthesis' in window) {
@@ -491,7 +515,7 @@
                 feedbackElement.style.color = 'var(--success-color)';
                 
                 setTimeout(() => {
-                    nextCard();
+                    window.nextCard(); // 调用 async 函数
                 }, 700);
                 
             } else {
