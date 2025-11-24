@@ -552,13 +552,27 @@
             const card = cards.length > 0 ? cards[currentIndex] : {front: "", back: "请添加卡片"};
             
             if(cardElement.classList.contains('is-flipped')) {
-                // 朗读时清除括号内容
-                const textToRead = card.back.replace(/\s*\(.*\)/g, '').trim(); 
+                // --- 核心修复：更精确地提取要朗读的文本，确保只读一遍 ---
+                const backText = card.back.trim();
+                
+                // 找到第一个括号的位置（无论是全角还是半角）
+                const firstParenIndex = backText.search(/[（(]/);
+                
+                let textToRead;
+                if (firstParenIndex > 0) {
+                    // 如果找到括号，只取括号前面的部分
+                    textToRead = backText.substring(0, firstParenIndex).trim();
+                } else {
+                    // 如果没有括号，读取全部
+                    textToRead = backText;
+                }
+                
                 readText(textToRead, 'ja-JP'); 
+                // --- 修复结束 ---
             } 
         }
         
-        // ====== 核心编辑/管理函数 ======
+        // ====== 核心编辑/管理函数 (不变) ======
 
         window.addNewCard = async function() {
             if (!isEditorUnlocked) {
@@ -690,7 +704,7 @@
             }
         }
         
-        // --- 查看所有单词功能 (已修复点击选中逻辑) ---
+        // --- 查看所有单词功能 (不变) ---
 
         window.viewAllWords = function(showModal = true) {
             if (!isEditorUnlocked) {
@@ -734,7 +748,6 @@
                     li.dataset.index = index; // 存储原始索引
                     li.dataset.selected = 'false'; // 初始未选中
                     
-                    // --- 核心修复区域 ---
                     li.onclick = function() {
                         // 切换选中状态
                         const isSelected = this.dataset.selected === 'true';
@@ -742,7 +755,6 @@
                         // 使用正确的 CSS 变量值 #fff5ee 进行背景切换
                         this.style.backgroundColor = isSelected ? 'transparent' : '#fff5ee'; 
                     };
-                    // --- 修复结束 ---
                     
                     const info = document.createElement('div');
                     info.className = 'word-info';
