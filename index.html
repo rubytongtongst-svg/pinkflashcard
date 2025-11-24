@@ -103,6 +103,13 @@
         .btn-del { background-color: #ffe0e0; color: var(--danger-color); }
         .btn-warn { background-color: #fff8e1; color: var(--warning-color); border: 1px solid #ffcc80; } 
         .btn-warn:hover { background-color: #ffedc1; }
+        
+        /* 模态框内的按钮 */
+        .btn-modal-action { 
+            padding: 5px 10px; 
+            font-size: 0.85rem; 
+            margin-left: 8px;
+        }
 
         .deck-controls {
             display: flex;
@@ -192,6 +199,7 @@
             max-height: 80vh;
             overflow-y: auto;
             box-shadow: 0 15px 35px rgba(0, 0, 0, 0.3);
+            position: relative;
         }
         .word-list-modal h3 {
             border-bottom: 2px solid var(--unified-pink);
@@ -202,15 +210,29 @@
             list-style: none;
             padding: 0;
         }
+        /* 列表项样式调整，以容纳操作按钮 */
         .word-list-modal li {
-            padding: 8px 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 0;
             border-bottom: 1px dotted #e2e8f0;
             font-size: 1rem;
         }
+        .word-info {
+            flex-grow: 1;
+        }
         .word-list-modal li strong {
             display: inline-block;
-            width: 40%;
+            min-width: 40px;
             color: var(--unified-pink);
+            margin-right: 10px;
+        }
+        .word-actions {
+            flex-shrink: 0;
+            display: flex;
+            align-items: center;
+            gap: 5px;
         }
         .word-list-modal .close-btn {
             float: right;
@@ -218,6 +240,9 @@
             color: white;
             padding: 5px 10px;
             cursor: pointer;
+            position: absolute;
+            top: 20px;
+            right: 20px;
         }
         
     </style>
@@ -290,6 +315,13 @@
         <div class="word-list-modal">
             <button class="close-btn" onclick="closeWordList()">X 关闭</button>
             <h3 id="wordListTitle"></h3>
+            
+            <div id="moveActions" style="margin-bottom: 15px; padding: 10px; border: 1px solid var(--unified-pink-light); border-radius: 6px; display: none; background: #fff;">
+                <label for="targetDeckSelect" style="font-size: 0.9rem; color: #64748b;">选择目标卡组:</label>
+                <select id="targetDeckSelect" style="padding: 8px; border-radius: 6px; border: 1px solid #cbd5e1; width: 60%; margin-right: 10px;"></select>
+                <button class="btn-check btn-modal-action" onclick="moveWordToDeck(this)">🚀 移动选中单词</button>
+            </div>
+            
             <ul id="wordListContent">
                 </ul>
         </div>
@@ -510,7 +542,7 @@
             const currentCard = displayCards[actualIndex];
             
             frontElement.innerText = currentCard.front;
-            // 🎯 修复 1/3: 卡片背面现在显示完整内容，包括括号
+            // 卡片背面现在显示完整内容，包括括号
             backElement.innerText = currentCard.back; 
         }
 
@@ -519,7 +551,7 @@
             const card = cards.length > 0 ? cards[currentIndex] : {front: "", back: "请添加卡片"};
             
             if(cardElement.classList.contains('is-flipped')) {
-                // 🎯 修复 1/3: 朗读时清除括号内容，避免朗读 (せんせい)
+                // 朗读时清除括号内容
                 const textToRead = card.back.replace(/\s*\(.*\)/g, '').trim(); 
                 readText(textToRead, 'ja-JP'); 
             } 
@@ -588,32 +620,149 @@
             }
         }
         
+        // --- 新增：模态框内的删除功能 ---
+        window.deleteWordFromList = async function(buttonElement) {
+            if (!isEditorUnlocked) return;
+            
+            const li = buttonElement.closest('li');
+            const indexToDelete = parseInt(li.dataset.index);
+            
+            if (currentDeckName === '所有卡片 (随机)') {
+                alert("请切换到具体的卡组进行删除操作。");
+                return;
+            }
+
+            if(confirm(`确定要删除【${allDecks[currentDeckName][indexToDelete].front}】这张卡片吗？`)) {
+                allDecks[currentDeckName].splice(indexToDelete, 1);
+                
+                await saveDecks();
+                // 重新渲染列表，保证索引正确
+                viewAllWords(false); 
+            }
+        }
+        
+        // --- 新增：模态框内的转移功能 ---
+        window.moveWordToDeck = async function(buttonElement) {
+            if (!isEditorUnlocked) return;
+            
+            const targetDeckSelect = document.getElementById('targetDeckSelect');
+            const targetDeckName = targetDeckSelect.value;
+            
+            if (!targetDeckName || targetDeckName === currentDeckName) {
+                alert("请选择一个不同于当前卡组的目标卡组。");
+                return;
+            }
+            
+            const cardsToMove = [];
+            const listItems = document.querySelectorAll('#wordListContent li');
+            
+            // 收集所有被选中的卡片的索引
+            const selectedIndices = [];
+            listItems.forEach((li, index) => {
+                if (li.dataset.selected === 'true') {
+                    selectedIndices.push(index);
+                }
+            });
+
+            if (selectedIndices.length === 0) {
+                alert("请先点击列表中的单词来选择要移动的卡片。");
+                return;
+            }
+
+            if (confirm(`确定将选中的 ${selectedIndices.length} 张卡片移动到【${targetDeckName}】吗？`)) {
+                
+                // 1. 从当前卡组中收集并移除卡片 (从后往前移除，避免索引变化)
+                const currentDeck = allDecks[currentDeckName];
+                // 排序，从大到小移除
+                selectedIndices.sort((a, b) => b - a).forEach(index => {
+                    cardsToMove.push(currentDeck[index]);
+                    currentDeck.splice(index, 1);
+                });
+                
+                // 2. 添加到目标卡组
+                allDecks[targetDeckName] = allDecks[targetDeckName].concat(cardsToMove);
+                
+                await saveDecks();
+                
+                // 重新渲染列表，并关闭模态框
+                closeWordList(); 
+            }
+        }
+        
         // --- 修复 2/3: 查看所有单词功能 ---
 
-        window.viewAllWords = function() {
+        window.viewAllWords = function(showModal = true) {
             if (!isEditorUnlocked) {
                 alert("请先点击【解锁编辑】按钮并输入密码。");
                 return;
             }
             
+            if(currentDeckName === '所有卡片 (随机)') {
+                alert("请切换到具体的卡组再查看。'所有卡片'模式无法编辑。");
+                return;
+            }
+
             const listContent = document.getElementById('wordListContent');
             const titleElement = document.getElementById('wordListTitle');
             const currentDeckCards = allDecks[currentDeckName] || []; // 使用原始卡组数据
+            const moveActions = document.getElementById('moveActions');
+
             
             titleElement.innerText = `【${currentDeckName}】中的所有单词 (${currentDeckCards.length})`;
             listContent.innerHTML = '';
+            moveActions.style.display = 'block';
 
+            // 填充目标卡组选择器
+            const targetDeckSelect = document.getElementById('targetDeckSelect');
+            targetDeckSelect.innerHTML = '';
+            Object.keys(allDecks).sort().forEach(name => {
+                if(name !== '所有卡片 (随机)' && name !== '请添加新卡组' && name !== currentDeckName) {
+                    const option = document.createElement('option');
+                    option.value = name;
+                    option.innerText = name;
+                    targetDeckSelect.appendChild(option);
+                }
+            });
+            
             if (currentDeckCards.length === 0) {
                 listContent.innerHTML = '<li>该卡组为空。</li>';
+                moveActions.style.display = 'none';
             } else {
-                currentDeckCards.forEach(card => {
+                currentDeckCards.forEach((card, index) => {
                     const li = document.createElement('li');
-                    li.innerHTML = `<strong>${card.front}</strong>：${card.back}`;
+                    li.dataset.index = index; // 存储原始索引
+                    li.dataset.selected = 'false'; // 初始未选中
+                    li.onclick = function() {
+                        // 切换选中状态
+                        const isSelected = this.dataset.selected === 'true';
+                        this.dataset.selected = isSelected ? 'false' : 'true';
+                        this.style.backgroundColor = isSelected ? 'transparent' : var(--unified-pink-light);
+                    };
+                    
+                    const info = document.createElement('div');
+                    info.className = 'word-info';
+                    info.innerHTML = `<strong>${card.front}</strong>：${card.back}`;
+                    
+                    const actions = document.createElement('div');
+                    actions.className = 'word-actions';
+                    
+                    const deleteBtn = document.createElement('button');
+                    deleteBtn.className = 'btn-del btn-modal-action';
+                    deleteBtn.innerText = '❌ 删除';
+                    // 使用 stopPropagation 阻止点击按钮时触发父级 li 的点击事件
+                    deleteBtn.onclick = (e) => { e.stopPropagation(); deleteWordFromList(deleteBtn); }; 
+                    
+                    actions.appendChild(deleteBtn);
+                    
+                    li.appendChild(info);
+                    li.appendChild(actions);
                     listContent.appendChild(li);
                 });
             }
 
-            document.getElementById('wordListModal').style.display = 'flex'; // 显示模态框
+            if (showModal) {
+                 document.getElementById('wordListModal').style.display = 'flex'; // 显示模态框
+            }
         }
 
         window.closeWordList = function() {
@@ -810,7 +959,7 @@
             const match = backContent.match(regex);
             
             if (match) {
-                // 修复 3/3: 接受汉字和假名两种答案
+                // 接受汉字和假名两种答案
                 const kanji = match[1].trim(); 
                 const kana = match[2].trim(); 
                 acceptableAnswers.push(kanji);
