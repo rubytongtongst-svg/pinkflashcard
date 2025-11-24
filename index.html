@@ -218,6 +218,7 @@
             padding: 10px 0;
             border-bottom: 1px dotted #e2e8f0;
             font-size: 1rem;
+            cursor: pointer; /* 启用点击选中效果 */
         }
         .word-info {
             flex-grow: 1;
@@ -620,7 +621,7 @@
             }
         }
         
-        // --- 新增：模态框内的删除功能 ---
+        // --- 模态框内的删除功能 ---
         window.deleteWordFromList = async function(buttonElement) {
             if (!isEditorUnlocked) return;
             
@@ -641,7 +642,7 @@
             }
         }
         
-        // --- 新增：模态框内的转移功能 ---
+        // --- 模态框内的转移功能 ---
         window.moveWordToDeck = async function(buttonElement) {
             if (!isEditorUnlocked) return;
             
@@ -689,7 +690,7 @@
             }
         }
         
-        // --- 修复 2/3: 查看所有单词功能 ---
+        // --- 查看所有单词功能 (已修复点击选中逻辑) ---
 
         window.viewAllWords = function(showModal = true) {
             if (!isEditorUnlocked) {
@@ -732,12 +733,16 @@
                     const li = document.createElement('li');
                     li.dataset.index = index; // 存储原始索引
                     li.dataset.selected = 'false'; // 初始未选中
+                    
+                    // --- 核心修复区域 ---
                     li.onclick = function() {
                         // 切换选中状态
                         const isSelected = this.dataset.selected === 'true';
                         this.dataset.selected = isSelected ? 'false' : 'true';
-                        this.style.backgroundColor = isSelected ? 'transparent' : var(--unified-pink-light);
+                        // 使用正确的 CSS 变量值 #fff5ee 进行背景切换
+                        this.style.backgroundColor = isSelected ? 'transparent' : '#fff5ee'; 
                     };
+                    // --- 修复结束 ---
                     
                     const info = document.createElement('div');
                     info.className = 'word-info';
