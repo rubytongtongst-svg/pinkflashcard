@@ -306,8 +306,10 @@
         
         <div style="flex-grow: 1;"></div> 
         
+        <button class="btn-nav" onclick="exportToPDF()" title="导出PDF">🖨️</button>
+
         <button id="unlockEditorButton" class="btn-check" onclick="unlockEditor()">🔑 解锁编辑</button>
-        <button class="btn-nav editor-control" style="display: none;" onclick="exportToPDF()" title="导出PDF">🖨️</button>
+        
         <button class="btn-nav editor-control" style="display: none;" onclick="viewAllWords()" title="搜索/管理">📖</button>
         <button class="btn-new-deck editor-control" style="display: none;" onclick="createNewDeck()">+ 卡组</button>
         <button class="btn-warn editor-control" style="display: none;" onclick="deleteDeck()">- 卡组</button>
@@ -428,7 +430,6 @@
             else speechSynthesis.onvoiceschanged = setVoice;
         }
 
-        // --- 更新后的 UI 函数，只显示 Emoji ---
         function updateMuteButtonUI() {
             const button = document.getElementById('muteButton');
             if (isMuted) {
@@ -543,10 +544,8 @@
             } 
         }
         
-        // ====== 导出 PDF 功能 (新增手动返回按钮和预览) ======
+        // ====== 导出 PDF 功能 (现在任何人都可以使用) ======
         window.exportToPDF = function() {
-            if (!isEditorUnlocked) return;
-            
             // 1. 定义打印页面的样式，并新增按钮的CSS
             let printStyle = `<style>
                 /* PDF 报告的基础样式 */
