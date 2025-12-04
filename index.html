@@ -167,8 +167,13 @@
             padding: 10px;
             border: 1px solid var(--unified-pink); 
             border-radius: 6px;
+            box-sizing: border-box; 
             /* 优化iOS输入 */
             -webkit-appearance: none; 
+        }
+        .typing-input-group {
+            display: flex;
+            gap: 10px;
         }
         .feedback {
             margin-top: 10px;
@@ -532,10 +537,13 @@
             } 
         }
         
+        // ====== 导出 PDF 功能 (修复移动端返回问题) ======
         window.exportToPDF = function() {
             if (!isEditorUnlocked) return;
             
+            // 打印页面的HTML和CSS内容
             let printContent = `<html><head><title>单词表</title><style>body{font-family:sans-serif;padding:20px}h1{text-align:center}h2{border-bottom:2px solid #ffc0cb;margin-top:30px}table{width:100%;border-collapse:collapse}th,td{border:1px solid #ddd;padding:8px}th{background:#fff0f5}tr:nth-child(even){background:#f9f9f9}</style></head><body><h1>📚 我的单词本</h1>`;
+            
             Object.keys(allDecks).sort().forEach(deckName => {
                 if (deckName === '请添加新卡组') return;
                 const deckCards = allDecks[deckName];
@@ -545,10 +553,20 @@
                 printContent += `</tbody></table>`;
             });
             printContent += `</body></html>`;
+
             const printWindow = window.open('', '_blank');
             printWindow.document.write(printContent);
             printWindow.document.close();
-            setTimeout(() => { printWindow.print(); }, 500);
+
+            setTimeout(() => {
+                printWindow.print(); 
+                
+                // ⭐️ 修复关键点：在打印对话框弹出后，立即尝试关闭此窗口。
+                setTimeout(() => {
+                    printWindow.close();
+                }, 100); 
+
+            }, 500);
         }
 
         function renderWordList(filterText = '') {
