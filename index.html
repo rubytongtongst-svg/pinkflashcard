@@ -52,6 +52,8 @@
             perspective: 1000px;
             margin: 20px 0;
             cursor: pointer;
+            /* 确保元素不会被默认浏览器行为拖拽影响，优化滑动体验 */
+            touch-action: pan-y;
         }
 
         .card {
@@ -311,7 +313,7 @@
         <div class="card" id="flashcard">
             <div class="card-face front">
                 <span id="displayFront">Loading...</span>
-                <div class="hint">点击翻看答案</div>
+                <div class="hint">点击翻看答案 或 左右滑动切换卡片</div>
             </div>
             <div class="card-face back">
                 <span id="displayBack">...</span>
@@ -328,12 +330,6 @@
         <div id="feedback" class="feedback"></div>
     </div>
 
-
-    <div class="controls">
-        <button class="btn-nav" onclick="prevCard()">← 上一个</button>
-        <button class="btn-del editor-control" style="display: none;" onclick="deleteCurrentCard()">删除这张</button>
-        <button class="btn-nav" onclick="nextCard()">下一个 →</button>
-    </div>
 
     <hr style="width: 100%; max-width: 400px; border: 0; border-top: 1px solid #e2e8f0; margin-bottom: 20px;">
 
@@ -616,6 +612,26 @@
             // 5. 移除自动 print() 和自动 close()。让用户手动点击按钮控制。
         }
 
+        // 删除卡片功能，现在只能在管理界面使用
+        window.deleteCurrentCard = function() {
+            // 此功能按钮已移除，但函数保留，以防万一
+            if (!isEditorUnlocked) return alert("请先解锁编辑。");
+            if (cards.length === 0) return;
+            if(confirm(`确定从【${currentDeckName}】中删除卡片：${cards[currentIndex].front} 吗？`)) {
+                const cardToDelete = cards[currentIndex];
+                const deck = allDecks[currentDeckName];
+                const indexInDeck = deck.findIndex(c => c.front === cardToDelete.front && c.back === cardToDelete.back);
+                if (indexInDeck > -1) {
+                    deck.splice(indexInDeck, 1);
+                    cards.splice(currentIndex, 1); // 从当前列表中删除
+                    currentIndex = Math.max(0, Math.min(currentIndex, cards.length - 1));
+                    saveDecks(); 
+                    updateUI(); 
+                }
+            }
+        }
+
+
         function renderWordList(filterText = '') {
             const listContent = document.getElementById('wordListContent');
             listContent.innerHTML = '';
@@ -876,6 +892,48 @@
                 feedbackElement.style.color = 'var(--danger-color)';
             }
         }
+        
+        // ====== 手势操作逻辑 (替换 上一个/下一个 按钮) ======
+        const cardScene = document.querySelector('.scene');
+        let touchStartX = 0;
+        const SWIPE_THRESHOLD = 80; // 滑动最小距离（像素），防止误触
+
+        cardScene.addEventListener('touchstart', (e) => {
+            // 记录触摸开始的X坐标
+            touchStartX = e.touches[0].clientX;
+        });
+
+        cardScene.addEventListener('touchend', (e) => {
+            const touchEndX = e.changedTouches[0].clientX;
+            const deltaX = touchEndX - touchStartX;
+
+            // 动作幅度不够大，则认为是点击（翻转卡片）或误触，不处理滑动
+            if (Math.abs(deltaX) < SWIPE_THRESHOLD) return; 
+
+            // 如果卡片正在翻转，则等待翻转完成，不处理滑动
+            if (cardElement.classList.contains('is-flipped')) {
+                // 允许用户在翻面时滑动，但先让卡片复位
+                cardElement.classList.remove('is-flipped');
+                setTimeout(() => {
+                    if (deltaX > 0) {
+                        // 向右滑动 (Swipe Right) -> 上一张
+                        window.prevCard();
+                    } else {
+                        // 向左滑动 (Swipe Left) -> 下一张
+                        window.nextCard();
+                    }
+                }, 200); // 稍微延迟，让用户感觉卡片翻转后切换了
+            } else {
+                if (deltaX > 0) {
+                    // 向右滑动 (Swipe Right) -> 上一张
+                    window.prevCard();
+                } else {
+                    // 向左滑动 (Swipe Left) -> 下一张
+                    window.nextCard();
+                }
+            }
+        });
+
 
         initializeSpeech();
         loadDecks();
