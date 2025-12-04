@@ -13,10 +13,13 @@
     <link rel="icon" href="app-icon.png"> 
 
     <style>
-        /* 🎨 核心样式 */
+        /* 🎨 核心样式 - 颜色已更新 */
         :root {
-            --unified-pink: #ffc0cb; 
-            --unified-pink-light: #fff5ee; 
+            /* 您指定的新颜色 */
+            --unified-pink: #F8E0E0; 
+            --unified-pink-dark: #e6c0c0; /* 用于按钮点击态，稍微深一点 */
+            --unified-pink-light: #FCF2F1; /* 卡片背面背景 */
+            
             --bg-color: #fcfcfc; 
             --card-bg: #ffffff;
             --text-main: #333333; 
@@ -26,51 +29,40 @@
             --info-color: #3b82f6;
         }
         
-        /* 【锁定】：锁定根元素，防止未解锁时出现滚动 */
         html {
             height: 100%;
-            overflow: hidden; /* 默认彻底锁定滚动 */
+            overflow: hidden; 
         }
 
         body {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
             background-color: var(--bg-color);
             color: var(--text-main);
-            
-            /* body 必须是 100% 高度以填充 html */
             height: 100%; 
-            overflow-y: hidden; /* 默认禁用垂直滚动 */
-            
+            overflow-y: hidden; 
             display: flex;
             flex-direction: column;
             align-items: center;
-            
             margin: 0;
-            /* 【修正 1】：移除水平 padding，只保留垂直安全区 */
             padding: 0; 
             padding-top: env(safe-area-inset-top, 20px);
             padding-bottom: env(safe-area-inset-bottom, 20px);
-            
-            /* 禁止弹性滚动效果 */
             overscroll-behavior: none; 
             box-sizing: border-box; 
         }
 
-        h1 { margin-bottom: 20px; font-size: 1.6rem; color: var(--unified-pink); } 
+        h1 { margin-bottom: 20px; font-size: 1.6rem; color: #ffb7b2; /* 标题颜色稍微深一点点以便阅读 */ } 
         
-        /* 【修正 2】：为所有主要内容添加水平 Padding，并调整 max-width */
+        /* 通用布局修正 */
         h1, .deck-controls-editor, .stats, .scene, .typing-section, .add-section, 
-        /* 特别针对 select 容器 */
         div[style*="margin-bottom: 10px; width: 100%;"] {
             padding-left: 20px;
             padding-right: 20px;
-            box-sizing: border-box; /* 确保 padding 不会增加总宽度 */
-            width: 100%; /* 确保它们占满父容器 */
-            /* 修正 max-width 以包含 20px 的左右 padding */
+            box-sizing: border-box; 
+            width: 100%; 
             max-width: 440px; 
         }
 
-        /* 修正卡组选择框的父容器样式（针对内联样式） */
         div[style*="margin-bottom: 10px; width: 100%;"] {
             text-align: left;
             margin-bottom: 10px !important;
@@ -78,12 +70,11 @@
 
         .scene {
             width: 100%;
-            max-width: 440px; /* 匹配上面的修正 */
+            max-width: 440px; 
             height: 260px;
             perspective: 1000px;
             margin: 10px 0; 
             cursor: pointer;
-            /* 确保元素不会被默认浏览器行为拖拽影响，优化滑动体验 */
             touch-action: pan-y;
         }
 
@@ -118,6 +109,8 @@
         }
 
         .card-face.front { font-size: 2.5rem; font-weight: 700; color: var(--text-main); } 
+        
+        /* 颜色已更新：卡片背面 */
         .card-face.back { 
             transform: rotateY(180deg); 
             background-color: var(--unified-pink-light); 
@@ -135,29 +128,26 @@
             cursor: pointer;
             transition: all 0.2s;
             font-size: 0.9rem;
-            /* 移除移动端点击高亮背景 */
             -webkit-tap-highlight-color: transparent;
         }
         
-        #muteButton { 
-            padding: 10px 15px; 
-            font-size: 0.9rem;
-        }
+        #muteButton { padding: 10px 15px; font-size: 0.9rem; }
 
         .btn-nav { background-color: white; border: 1px solid #cbd5e1; color: #475569; }
         .btn-nav:hover { background-color: #f0f0f0; }
 
-        .btn-check { background-color: var(--unified-pink); color: white; } 
-        .btn-check:hover { background-color: #ffb1c0; } 
+        /* 按钮颜色适配淡粉色背景，增加文字深色以保证可读性 */
+        .btn-check { background-color: var(--unified-pink); color: #555; } 
+        .btn-check:active { background-color: var(--unified-pink-dark); } 
         
-        .btn-new-deck, .btn-add { background-color: var(--unified-pink); color: white; }
-        .btn-new-deck:hover, .btn-add:hover { background-color: #ffb1c0; } 
+        .btn-new-deck, .btn-add { background-color: var(--unified-pink); color: #555; }
+        .btn-new-deck:active, .btn-add:active { background-color: var(--unified-pink-dark); } 
 
         .btn-del { background-color: #ffe0e0; color: var(--danger-color); }
         .btn-warn { background-color: #fff8e1; color: var(--warning-color); border: 1px solid #ffcc80; } 
         
         .btn-icon {
-            padding: 5px 8px;
+            padding: 8px 12px; /* 增大点击区域 */
             margin-left: 4px;
             border-radius: 6px;
             font-size: 1rem;
@@ -170,7 +160,7 @@
             display: flex;
             gap: 10px;
             width: 100%;
-            max-width: 400px; /* 这个 max-width 应该被上面的通用规则覆盖 */
+            max-width: 440px; 
             justify-content: flex-end;
             margin-bottom: 15px; 
         }
@@ -194,15 +184,10 @@
             border-radius: 12px;
             box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
             margin-bottom: 10px; 
-            padding: 20px; /* 内部 padding */
-        }
-        
-        /* 修正：移除 typing-section 的左右 padding，因为通用规则已添加 */
-        .typing-section {
+            padding: 20px; 
             padding-left: 0;
             padding-right: 0;
         }
-
 
         #answerInput {
             flex-grow: 1;
@@ -225,8 +210,8 @@
         
         input:focus {
             outline: none;
-            border-color: var(--unified-pink); 
-            box-shadow: 0 0 0 2px var(--unified-pink-light); 
+            border-color: #ffb7b2; 
+            box-shadow: 0 0 0 2px var(--unified-pink); 
         }
 
         .stats { margin-top: 10px; font-size: 0.9rem; color: #64748b; }
@@ -241,14 +226,12 @@
             -webkit-appearance: none;
         }
         
-        /* 修正分隔线的宽度以匹配内容 */
         hr {
             width: 100%; 
             max-width: 440px; 
             border: 0; 
             border-top: 1px solid #e2e8f0; 
             margin-bottom: 5px;
-            /* 确保 hr 也带有 padding */
             padding-left: 20px; 
             padding-right: 20px;
             box-sizing: border-box;
@@ -279,7 +262,7 @@
             position: relative;
             display: flex;
             flex-direction: column;
-            -webkit-overflow-scrolling: touch; /* iOS流畅滚动 */
+            -webkit-overflow-scrolling: touch; 
         }
         .word-list-modal h3 {
             border-bottom: 2px solid var(--unified-pink);
@@ -308,33 +291,23 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
-            padding: 10px 5px;
+            padding: 12px 5px; /* 增加内边距方便点击 */
             border-bottom: 1px dotted #e2e8f0;
             font-size: 1rem;
         }
-        .word-info {
-            flex-grow: 1;
-            padding-right: 10px;
-        }
-        .word-list-modal li strong {
-            color: var(--unified-pink);
-            margin-right: 5px;
-        }
-        .word-actions {
-            flex-shrink: 0;
-            display: flex;
-            align-items: center;
-        }
+        .word-info { flex-grow: 1; padding-right: 10px; }
+        .word-list-modal li strong { color: #ff9aa2; margin-right: 5px; }
+        .word-actions { flex-shrink: 0; display: flex; align-items: center; }
         .close-btn {
             background: var(--text-main);
             color: white;
-            padding: 8px;
+            padding: 10px;
             width: 100%;
             margin-top: 10px;
             border-radius: 6px;
         }
         
-        /* 新增：打印选择模态框的样式 */
+        /* 打印选择模态框优化 */
         .deck-select-modal {
             background: white;
             padding: 25px;
@@ -356,47 +329,49 @@
             border-radius: 8px;
         }
         .deck-select-list li {
-            padding: 12px;
+            padding: 15px 12px; /* 增大触摸区域 */
             display: flex;
             justify-content: space-between;
             align-items: center;
             border-bottom: 1px dotted #e2e8f0;
             cursor: pointer;
-            transition: background-color 0.1s;
-            /* 关键：启用拖拽功能 */
-            user-select: none; 
+            transition: background-color 0.15s;
+            user-select: none;
+            background-color: #fff;
         }
-        .deck-select-list li:last-child {
-            border-bottom: none;
+        .deck-select-list li:active {
+            background-color: var(--unified-pink-light); /* 点击反馈 */
         }
-        .deck-select-list li:hover {
-            background-color: #f7f7f7;
-        }
-        .deck-select-list li input[type="checkbox"] {
-            margin-right: 15px;
-            width: 18px;
-            height: 18px;
+        .deck-select-list li.selected {
+            background-color: var(--unified-pink-light);
         }
         
-        /* 拖拽排序新增样式 */
+        /* 拖拽排序优化 */
         .drag-handle {
             cursor: grab;
-            padding: 0 10px;
-            font-size: 1.5rem;
+            padding: 10px 15px 10px 5px; /* 增大触摸区域 */
+            font-size: 1.6rem;
             color: #94a3b8;
+            touch-action: none; /* 关键：阻止浏览器默认滚动 */
         }
-        
         .deck-info-wrapper {
             display: flex;
             align-items: center;
             flex-grow: 1;
+            pointer-events: none; /* 让点击穿透到 li */
+        }
+        .deck-checkbox {
+            margin-right: 15px;
+            width: 22px; /* 更大的复选框 */
+            height: 22px;
+            pointer-events: none; /* 复选框本身不响应点击，由 li 代理 */
         }
         
-        /* 拖拽时的样式 */
         .dragging {
-            opacity: 0.5;
-            border: 2px dashed var(--unified-pink);
-            background-color: var(--unified-pink-light);
+            opacity: 0.8;
+            background-color: var(--unified-pink);
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            transform: scale(1.02);
         }
         
     </style>
@@ -413,13 +388,9 @@
     
     <div class="deck-controls deck-controls-editor">
         <button id="muteButton" class="btn-nav" onclick="toggleMute()" title="开启/关闭声音">🔊</button>
-        
         <div style="flex-grow: 1;"></div> 
-        
         <button class="btn-nav" onclick="exportToPDF()" title="导出PDF">🖨️</button>
-
         <button id="unlockEditorButton" class="btn-check" onclick="unlockEditor()">🔑 解锁编辑</button>
-        
         <button class="btn-nav editor-control" style="display: none;" onclick="viewAllWords()" title="搜索/管理">📖</button>
         <button class="btn-new-deck editor-control" style="display: none;" onclick="createNewDeck()">+ 卡组</button>
         <button class="btn-warn editor-control" style="display: none;" onclick="deleteDeck()">- 卡组</button>
@@ -449,7 +420,6 @@
             <div id="feedback" class="feedback"></div>
         </div>
     </div>
-
 
     <hr>
 
@@ -481,16 +451,13 @@
     <div id="printSelectModal" class="modal-overlay" style="display: none;">
         <div class="deck-select-modal">
             <h3>🖨️ 选择要打印的卡组</h3>
-            
             <p style="font-size: 0.85rem; color: #64748b; margin: 0; text-align: center;">
-                💡 拖动左侧 **☰** 图标可手动排序
+                💡 按住左侧 ☰ 拖动排序，点击行勾选
             </p>
-            
-            <ul id="deckSelectList" class="deck-select-list">
-                </ul>
+            <ul id="deckSelectList" class="deck-select-list"></ul>
             <div style="display: flex; gap: 10px; width: 100%;">
                 <button class="btn-check" onclick="confirmPrint()" style="flex: 1;">确认打印</button>
-                <button class="btn-nav" onclick="closePrintSelectModal()" style="flex: 1;">取消/关闭</button>
+                <button class="btn-nav" onclick="closePrintSelectModal()" style="flex: 1;">取消</button>
             </div>
         </div>
     </div>
@@ -499,7 +466,7 @@
         import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.10/firebase-app.js";
         import { getFirestore, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/9.6.10/firebase-firestore.js";
 
-        // 请注意：这里的 Firebase 配置是示例，如果您有自己的项目，请替换成您自己的配置！
+        // 请替换为您自己的 Firebase 配置
         const firebaseConfig = {
             apiKey: "AIzaSyDRh1wj0UPt60ZDmVOKLc_qZ1FYE6J7TC",
             authDomain: "my-flashcard-sync.firebaseapp.com",
@@ -554,7 +521,6 @@
                     (voice.name.includes('Google') || voice.name.includes('Kyoko') || voice.name.includes('Haruka'))
                 );
                 if (!japaneseVoice) japaneseVoice = voices.find(voice => voice.lang === 'ja-JP');
-                if (japaneseVoice) console.log("已加载日语声源:", japaneseVoice.name);
                 speechSynthesis.onvoiceschanged = null; 
             };
             if (speechSynthesis.getVoices().length) setVoice();
@@ -564,11 +530,9 @@
         function updateMuteButtonUI() {
             const button = document.getElementById('muteButton');
             if (isMuted) {
-                // 仅显示开启声音的 Emoji
                 button.innerHTML = '🔊';
                 button.className = 'btn-nav'; 
             } else {
-                // 仅显示静音的 Emoji
                 button.innerHTML = '🔇';
                 button.className = 'btn-warn'; 
             }
@@ -580,25 +544,21 @@
             const unlockButton = document.getElementById('unlockEditorButton');
             if(unlockButton) unlockButton.style.display = isLocked ? 'block' : 'none'; 
             
-            // 确保在 updateEditorUI 运行时也同步 body 样式
             const html = document.documentElement;
             const body = document.body;
             if (isLocked) {
                 html.style.overflow = 'hidden';
                 html.style.height = '100%';
-
                 body.style.overflowY = 'hidden';
                 body.style.height = '100%';
             } else {
                 html.style.overflow = 'auto';
                 html.style.height = 'auto';
-
                 body.style.overflowY = 'auto';
                 body.style.height = 'auto';
             }
         }
         
-        // 【核心修改】动态控制 HTML 和 BODY 滚动
         window.unlockEditor = function() {
             if (isEditorUnlocked) { 
                 if (confirm("编辑功能已解锁。要锁定编辑并禁用滚动吗？")) {
@@ -610,32 +570,26 @@
                 const inputPassword = prompt("请输入编辑密码以解锁功能：");
                 if (inputPassword === EDITOR_PASSWORD) {
                     isEditorUnlocked = true;
-                    alert("编辑功能已成功解锁！现在您可以向下滚动添加单词。");
+                    alert("编辑功能已成功解锁！");
                 } else if (inputPassword !== null && inputPassword !== "") {
-                    alert("密码错误，编辑功能未解锁。");
+                    alert("密码错误");
                 }
             }
-
-            // 【核心逻辑】：根据解锁状态切换 HTML 和 BODY 滚动
-            const html = document.documentElement; // 获取 html 元素
+            
+            // 手动调用一次样式更新
+            const html = document.documentElement;
             const body = document.body;
-
             if (isEditorUnlocked) {
-                // 解锁 -> 允许滚动
-                html.style.overflow = 'auto'; // 释放 html 锁定
+                html.style.overflow = 'auto'; 
                 html.style.height = 'auto';
-                
                 body.style.overflowY = 'auto'; 
                 body.style.height = 'auto'; 
             } else {
-                // 锁定 -> 禁止滚动
-                html.style.overflow = 'hidden'; // 锁定 html
+                html.style.overflow = 'hidden';
                 html.style.height = '100%';
-
                 body.style.overflowY = 'hidden';
-                body.style.height = '100%'; // 强制 body 填充 100% html
+                body.style.height = '100%';
             }
-            
             updateEditorUI();
         }
 
@@ -645,7 +599,7 @@
                 await setDoc(doc(db, USER_COLLECTION, USER_DOC_ID), docData);
             } catch (e) {
                 console.error("保存失败:", e);
-                document.getElementById('feedback').innerText = "❌ 警告：同步失败，请检查网络！";
+                document.getElementById('feedback').innerText = "❌ 同步失败";
             }
             updateUI();
         }
@@ -667,7 +621,7 @@
             } catch (e) {
                 allDecks = initialDecks;
                 currentDeckName = Object.keys(allDecks)[0];
-                alert("❗ 错误：云连接失败，使用本地数据。");
+                alert("❗ 错误：云连接失败");
             }
             updateMuteButtonUI();
             populateDeckSelect();
@@ -684,7 +638,7 @@
         }
         
         window.updateUI = function() {
-            const displayCards = cards.length === 0 ? [{front: `卡组【${currentDeckName}】`, back: "卡片为空，请在下方添加"}] : cards;
+            const displayCards = cards.length === 0 ? [{front: `卡组【${currentDeckName}】`, back: "卡片为空"}] : cards;
             currentIndex = Math.max(0, Math.min(currentIndex, cards.length - 1));
             
             document.getElementById('totalCount').innerText = cards.length;
@@ -721,62 +675,56 @@
             } 
         }
         
-        // ====== 打印/导出 PDF 核心逻辑 (包含拖拽排序) ======
-
-        window.exportToPDF = function() {
-            showPrintSelectModal();
-        }
+        // ====== 打印/导出 PDF 逻辑 ======
         
-        function showPrintSelectModal() {
+        // 1. 显示模态框，渲染列表
+        window.exportToPDF = function() {
             const selectList = document.getElementById('deckSelectList');
             selectList.innerHTML = '';
-            
-            // 默认按名称排序，以便用户拖拽前有个稳定顺序
             const deckNames = Object.keys(allDecks).filter(name => allDecks[name].length > 0).sort();
             
-            // 1. 添加“全选”选项 (不可拖拽)
+            // 全选
             const allOption = document.createElement('li');
-            allOption.innerHTML = `<div class="deck-info-wrapper" style="margin-left: 20px;"><input type="checkbox" id="check_all" checked> <label for="check_all">**全选所有词汇 (${deckNames.reduce((sum, name) => sum + allDecks[name].length, 0)})**</label></div>`;
-            allOption.onclick = (e) => {
-                // 确保点击的不是拖拽把手
-                 if (!e.target.classList.contains('drag-handle')) {
-                    const checked = document.getElementById('check_all').checked;
-                    document.querySelectorAll('.deck-checkbox').forEach(cb => cb.checked = !checked);
-                    document.getElementById('check_all').checked = !checked;
-                 }
+            allOption.innerHTML = `<div class="deck-info-wrapper" style="margin-left: 10px;"><input type="checkbox" id="check_all" checked> <label for="check_all">**全选所有词汇**</label></div>`;
+            allOption.onclick = function() {
+               const checkbox = this.querySelector('input');
+               const checked = !checkbox.checked;
+               checkbox.checked = checked;
+               document.querySelectorAll('.deck-checkbox').forEach(cb => cb.checked = checked);
             };
             selectList.appendChild(allOption);
             
-            // 2. 添加所有卡组选项 (可拖拽)
             deckNames.forEach(name => {
                 const li = document.createElement('li');
-                li.setAttribute('draggable', 'true'); // 关键：设置为可拖拽
-                li.id = `deck-${name.replace(/\s/g, '_')}`; // 唯一ID
+                // 不使用 draggable=true，而是使用 touch 事件
+                li.dataset.deckName = name;
                 
                 li.innerHTML = `
-                    <div class="drag-handle">☰</div>
+                    <div class="drag-handle" ontouchstart="startTouchDrag(event, this)">☰</div>
                     <div class="deck-info-wrapper">
-                        <input type="checkbox" class="deck-checkbox" id="check_${name}" data-deck-name="${name}" checked> 
-                        <label for="check_${name}">${name} (${allDecks[name].length})</label>
+                        <input type="checkbox" class="deck-checkbox" data-deck-name="${name}" checked> 
+                        <span>${name} (${allDecks[name].length})</span>
                     </div>
                 `;
                 
-                // 拖拽图标的点击事件只切换勾选状态
+                // 绑定点击事件用于勾选
                 li.onclick = (e) => {
-                    // 如果点击的不是拖拽把手
                     if (!e.target.classList.contains('drag-handle')) {
-                         // 切换 checkbox 状态
-                        const checkbox = li.querySelector('input');
+                        const checkbox = li.querySelector('.deck-checkbox');
                         checkbox.checked = !checkbox.checked;
-                        document.getElementById('check_all').checked = false; // 取消全选
+                        
+                        // 简单的选中反馈
+                        if(checkbox.checked) li.classList.add('selected');
+                        else li.classList.remove('selected');
+                        
+                        document.getElementById('check_all').checked = false;
                     }
                 };
+                // 初始化选中样式
+                li.classList.add('selected');
                 
                 selectList.appendChild(li);
             });
-            
-            // 3. 启用拖拽事件监听器
-            addDragListeners(selectList);
 
             document.getElementById('printSelectModal').style.display = 'flex';
         }
@@ -784,179 +732,91 @@
         window.closePrintSelectModal = function() {
             document.getElementById('printSelectModal').style.display = 'none';
         }
-        
-        // --- 拖拽排序核心逻辑 ---
-        let draggedItem = null;
 
-        function addDragListeners(list) {
-            list.querySelectorAll('li[draggable="true"]').forEach(item => {
-                item.addEventListener('dragstart', handleDragStart);
-                item.addEventListener('dragenter', handleDragEnter);
-                item.addEventListener('dragover', handleDragOver);
-                item.addEventListener('dragleave', handleDragLeave);
-                item.addEventListener('drop', handleDrop);
-                item.addEventListener('dragend', handleDragEnd);
-            });
-        }
-
-        function handleDragStart(e) {
-            draggedItem = this;
-            this.classList.add('dragging');
-            e.dataTransfer.effectAllowed = 'move';
-            e.dataTransfer.setData('text/html', this.innerHTML); 
-        }
-
-        function handleDragEnd(e) {
-            this.classList.remove('dragging');
-            document.querySelectorAll('.drag-over').forEach(el => el.classList.remove('drag-over'));
-            draggedItem = null;
-        }
-
-        function handleDragOver(e) {
-            e.preventDefault(); // 必须阻止默认行为以允许放置
-            e.dataTransfer.dropEffect = 'move';
+        // 2. 优化的触摸拖拽排序逻辑
+        window.startTouchDrag = function(e, handle) {
+            e.preventDefault(); // 阻止默认滚动
+            const li = handle.closest('li');
+            const list = li.parentNode;
+            const startY = e.touches[0].clientY;
             
-            // 确保只处理拖拽列表内的元素
-            if (!draggedItem || !this.closest('#deckSelectList')) return;
+            li.classList.add('dragging');
             
-            const target = getDragAfterElement(this.parentNode, e.clientY);
-            // 只有当目标不是拖拽中的元素时才进行插入操作
-            if (this !== draggedItem) {
-                if (target == null) {
-                    this.parentNode.appendChild(draggedItem);
-                } else {
-                    this.parentNode.insertBefore(draggedItem, target);
+            const onTouchMove = (moveEvent) => {
+                moveEvent.preventDefault();
+                const currentY = moveEvent.touches[0].clientY;
+                
+                // 获取当前手指下的元素
+                const elementBelow = document.elementFromPoint(moveEvent.touches[0].clientX, currentY);
+                if (!elementBelow) return;
+                
+                const targetLi = elementBelow.closest('li');
+                
+                if (targetLi && targetLi !== li && list.contains(targetLi)) {
+                    const bounding = targetLi.getBoundingClientRect();
+                    const offset = currentY - bounding.top - bounding.height / 2;
+                    
+                    if (offset > 0) {
+                        list.insertBefore(li, targetLi.nextSibling);
+                    } else {
+                        list.insertBefore(li, targetLi);
+                    }
                 }
-            }
+            };
+            
+            const onTouchEnd = () => {
+                li.classList.remove('dragging');
+                document.removeEventListener('touchmove', onTouchMove);
+                document.removeEventListener('touchend', onTouchEnd);
+            };
+            
+            document.addEventListener('touchmove', onTouchMove, { passive: false });
+            document.addEventListener('touchend', onTouchEnd);
         }
-        
-        function handleDragEnter(e) {
-            e.preventDefault();
-        }
-        
-        function handleDragLeave(e) {
-             // 拖拽离开时清除视觉效果
-        }
-
-        function handleDrop(e) {
-            e.stopPropagation();
-            return false;
-        }
-        
-        // 辅助函数：确定插入位置
-        function getDragAfterElement(container, y) {
-            // 只考虑可拖拽的元素
-            const draggableElements = [...container.querySelectorAll('li[draggable="true"]:not(.dragging)')];
-
-            return draggableElements.reduce((closest, child) => {
-                const box = child.getBoundingClientRect();
-                const offset = y - box.top - box.height / 2;
-                // offset < 0 表示鼠标在元素上半部分
-                if (offset < 0 && offset > closest.offset) {
-                    return { offset: offset, element: child };
-                } else {
-                    return closest;
-                }
-            }, { offset: Number.NEGATIVE_INFINITY }).element;
-        }
-        // --- 拖拽排序核心逻辑结束 ---
-
 
         window.confirmPrint = function() {
             const checkedDecks = [];
             const selectList = document.getElementById('deckSelectList');
-            // 关键：按当前 DOM 顺序获取所有可拖拽的列表项
-            const listItems = selectList.querySelectorAll('li[draggable="true"]'); 
+            const listItems = selectList.querySelectorAll('li'); // 获取当前排序后的li
 
             let hasSelection = false;
             
-            // 1. 遍历当前显示的列表顺序
             listItems.forEach(li => {
                 const checkbox = li.querySelector('.deck-checkbox');
-                const deckName = checkbox.dataset.deckName;
-                
-                // 2. 如果卡组被勾选，则按当前列表顺序添加到 checkedDecks
-                if (checkbox.checked) {
-                    checkedDecks.push(deckName);
+                if (checkbox && checkbox.checked) {
+                    checkedDecks.push(checkbox.dataset.deckName);
                     hasSelection = true;
                 }
             });
 
-            if (!hasSelection) {
-                alert("请至少选择一个卡组进行打印！");
-                return;
-            }
+            if (!hasSelection) return alert("请至少选择一个卡组！");
 
             closePrintSelectModal();
-            // 将手动排序后的卡组列表传递给打印预览
-            generatePrintPreview(checkedDecks); 
-        }
-
-        // 修正：现在只接受一个参数 deckNames (它已经是手动排序后的列表)
-        function generatePrintPreview(deckNames) {
             
-            const sortedDeckNames = deckNames; 
-            
-            // 1. 定义打印页面的样式
+            // 生成打印页面
             let printStyle = `<style>
                 body{font-family:sans-serif;padding:20px}
-                h1{text-align:center; color: #ffc0cb;}
-                h2{border-bottom:2px solid #ffc0cb;margin-top:30px}
+                h1{text-align:center; color: #F8E0E0;} /* 打印页面也用新颜色 */
+                h2{border-bottom:2px solid #F8E0E0;margin-top:30px}
                 table{width:100%;border-collapse:collapse; margin-top: 15px;}
                 th,td{border:1px solid #ddd;padding:8px}
-                th{background:#fff0f5}
+                th{background:#FCF2F1}
                 tr:nth-child(even){background:#f9f9f9}
-                
-                /* 预览界面按钮样式 */
-                .header-controls { 
-                    position: sticky; /* 粘性定位 */
-                    top: 0;
-                    background: white;
-                    z-index: 1000;
-                    text-align: center; 
-                    padding: 15px; 
-                    margin-bottom: 20px;
-                    border-bottom: 1px solid #e0e0e0;
-                }
-                .control-button { 
-                    padding: 12px 30px; 
-                    border: none; 
-                    border-radius: 8px; 
-                    cursor: pointer; 
-                    font-size: 1rem;
-                    font-weight: 600;
-                    margin: 5px;
-                    transition: background-color 0.2s;
-                }
-                .close-button { 
-                    background-color: #f44336; /* 红色 */
-                    color: white; 
-                }
-                .print-button { 
-                    background-color: #2196F3; /* 蓝色 */
-                    color: white; 
-                }
-                /* 隐藏按钮：当浏览器进入实际打印模式时，隐藏这些控件 */
-                @media print {
-                    .header-controls { display: none !important; }
-                }
+                .header-controls { text-align: center; padding: 15px; border-bottom: 1px solid #e0e0e0; margin-bottom: 20px;}
+                .control-button { padding: 10px 20px; border:none; border-radius:6px; margin:5px; font-size:1rem; cursor:pointer;}
+                .close-button { background:#ef5350; color:white; }
+                .print-button { background:#3b82f6; color:white; }
+                @media print { .header-controls { display: none !important; } }
             </style>`;
 
-            // 2. 定义手动关闭和打印按钮的 HTML
-            let controlsHTML = `
-                <div class="header-controls">
-                    <button class="control-button close-button" onclick="window.close()">❌ 关闭预览/返回单词本</button>
-                    <button class="control-button print-button" onclick="window.print()">🖨️ 打印/保存 PDF</button>
-                </div>`;
+            let controlsHTML = `<div class="header-controls">
+                <button class="control-button close-button" onclick="window.close()">❌ 关闭</button>
+                <button class="control-button print-button" onclick="window.print()">🖨️ 打印PDF</button>
+            </div>`;
 
-            // 3. 拼接打印页面的主体内容
-            let printContent = `<html><head><title>选定的单词表</title>${printStyle}</head><body>`;
-            printContent += controlsHTML; // 在顶部添加按钮
-
-            printContent += `<h1>📚 选定的单词表 (手动排序)</h1>`;
+            let printContent = `<html><head><title>单词表</title>${printStyle}</head><body>${controlsHTML}<h1>📚 我的单词表</h1>`;
             
-            // 使用手动排序后的数组进行内容生成
-            sortedDeckNames.forEach(deckName => {
+            checkedDecks.forEach(deckName => {
                 const deckCards = allDecks[deckName];
                 if (deckCards && deckCards.length > 0) {
                     printContent += `<h2>${deckName} (${deckCards.length})</h2><table><thead><tr><th width="40%">中文</th><th>日文</th></tr></thead><tbody>`;
@@ -964,34 +824,14 @@
                     printContent += `</tbody></table>`;
                 }
             });
-            
             printContent += `</body></html>`;
 
-            // 4. 打开新窗口并写入内容
             const printWindow = window.open('', '_blank');
             printWindow.document.write(printContent);
             printWindow.document.close();
         }
-        
-        // 删除卡片功能，现在只能在管理界面使用
-        window.deleteCurrentCard = function() {
-            // 此功能按钮已移除，但函数保留，以防万一
-            if (!isEditorUnlocked) return alert("请先解锁编辑。");
-            if (cards.length === 0) return;
-            if(confirm(`确定从【${currentDeckName}】中删除卡片：${cards[currentIndex].front} 吗？`)) {
-                const cardToDelete = cards[currentIndex];
-                const deck = allDecks[currentDeckName];
-                const indexInDeck = deck.findIndex(c => c.front === cardToDelete.front && c.back === cardToDelete.back);
-                if (indexInDeck > -1) {
-                    deck.splice(indexInDeck, 1);
-                    cards.splice(currentIndex, 1); // 从当前列表中删除
-                    currentIndex = Math.max(0, Math.min(currentIndex, cards.length - 1));
-                    saveDecks(); 
-                    updateUI(); 
-                }
-            }
-        }
 
+        // ====== 单词管理 ======
 
         function renderWordList(filterText = '') {
             const listContent = document.getElementById('wordListContent');
@@ -1016,7 +856,7 @@
             }
 
             if (displayList.length === 0) {
-                listContent.innerHTML = '<li style="text-align:center; color:#999;">没有找到匹配的单词</li>';
+                listContent.innerHTML = '<li style="text-align:center; color:#999;">无匹配单词</li>';
                 return;
             }
 
@@ -1024,19 +864,22 @@
                 const li = document.createElement('li');
                 const info = document.createElement('div');
                 info.className = 'word-info';
-                const deckInfo = currentDeckName === '所有卡片 (随机)' ? `<span style="font-size:0.8em; color:#999; display:block;">[${card.sourceDeck}]</span>` : '';
-                info.innerHTML = `${deckInfo}<strong>${card.front}</strong> ${card.back}`;
+                const deckInfo = currentDeckName === '所有卡片 (随机)' ? `<span style="font-size:0.8em; color:#999;">[${card.sourceDeck}]</span>` : '';
+                info.innerHTML = `${deckInfo} <strong>${card.front}</strong> ${card.back}`;
                 
                 const actions = document.createElement('div');
                 actions.className = 'word-actions';
+                
                 const moveBtn = document.createElement('button');
                 moveBtn.className = 'btn-icon btn-icon-move';
                 moveBtn.innerText = '➡️';
                 moveBtn.onclick = () => quickMoveWord(card.front, card.back, card.sourceDeck);
+                
                 const editBtn = document.createElement('button');
                 editBtn.className = 'btn-icon btn-icon-edit';
                 editBtn.innerText = '✏️';
                 editBtn.onclick = () => editWord(card.front, card.back, card.sourceDeck);
+                
                 const deleteBtn = document.createElement('button');
                 deleteBtn.className = 'btn-icon btn-icon-del';
                 deleteBtn.innerText = '❌';
@@ -1058,7 +901,7 @@
 
         window.viewAllWords = function() {
             if (!isEditorUnlocked) return alert("请先解锁编辑。");
-            document.getElementById('wordListTitle').innerText = `📖 ${currentDeckName} - 单词表`;
+            document.getElementById('wordListTitle').innerText = `📖 ${currentDeckName}`;
             document.getElementById('wordSearchInput').value = ''; 
             renderWordList();
             document.getElementById('wordListModal').style.display = 'flex';
@@ -1081,11 +924,11 @@
         }
 
         window.editWord = async function(front, back, deckName) {
-            const newFront = prompt("修改中文/正面:", front);
+            const newFront = prompt("修改中文:", front);
             if (newFront === null) return;
-            const newBack = prompt("修改日文/背面:", back);
+            const newBack = prompt("修改日文:", back);
             if (newBack === null) return;
-            if (!newFront || !newBack) return alert("内容不能为空");
+            if (!newFront || !newBack) return alert("不能为空");
 
             const deck = allDecks[deckName];
             const idx = deck.findIndex(c => c.front === front && c.back === back);
@@ -1099,15 +942,15 @@
 
         window.quickMoveWord = async function(front, back, fromDeckName) {
             const availableDecks = Object.keys(allDecks).filter(d => d !== '请添加新卡组' && d !== fromDeckName).sort();
-            if (availableDecks.length === 0) return alert("没有其他卡组可移动。");
+            if (availableDecks.length === 0) return alert("无其他卡组");
 
-            let promptMsg = `请输入目标卡组的【编号】:\n`;
+            let promptMsg = `请输入目标卡组【编号】:\n`;
             availableDecks.forEach((name, i) => promptMsg += `${i+1}. ${name}\n`);
             
             const selection = prompt(promptMsg);
             if (!selection) return;
             const targetIndex = parseInt(selection) - 1;
-            if (isNaN(targetIndex) || targetIndex < 0 || targetIndex >= availableDecks.length) return alert("编号无效。");
+            if (isNaN(targetIndex) || targetIndex < 0 || targetIndex >= availableDecks.length) return alert("无效编号");
             
             const targetDeckName = availableDecks[targetIndex];
             const sourceDeck = allDecks[fromDeckName];
@@ -1124,22 +967,22 @@
 
         window.createNewDeck = async function() {
             if (!isEditorUnlocked) return alert("请先解锁编辑。");
-            const newName = prompt("请输入新卡组名称:");
+            const newName = prompt("新卡组名称:");
             if (newName && newName.trim() && !allDecks[newName.trim()]) {
                 allDecks[newName.trim()] = [];
                 currentDeckName = newName.trim();
                 populateDeckSelect();
                 await saveDecks();
                 switchDeck(currentDeckName, false);
-            } else if (newName) alert("无效或已存在！");
+            } else if (newName) alert("无效或已存在");
         }
 
         window.deleteDeck = async function() {
             if (!isEditorUnlocked) return alert("请先解锁编辑。");
-            if(currentDeckName === '所有卡片 (随机)') return alert("请先切换到具体卡组。");
-            if (Object.keys(allDecks).length <= 1) return alert("不能删除最后一个卡组。");
+            if(currentDeckName === '所有卡片 (随机)') return alert("请先切换到具体卡组");
+            if (Object.keys(allDecks).length <= 1) return alert("不能删除最后一个卡组");
             
-            if (confirm(`⚠️ 确定删除卡组【${currentDeckName}】吗？`)) {
+            if (confirm(`确定删除卡组【${currentDeckName}】?`)) {
                 delete allDecks[currentDeckName];
                 currentDeckName = Object.keys(allDecks).find(n => n !== '所有卡片 (随机)') || Object.keys(allDecks)[0];
                 await saveDecks();
@@ -1177,32 +1020,29 @@
             const back = backInput.value.trim();
 
             if (!front || !back) {
-                alert("正面和背面内容不能为空！");
+                alert("内容不能为空");
                 return;
             }
 
             const deck = allDecks[currentDeckName];
             if (!deck) {
-                alert("卡组不存在，请检查当前卡组设置。");
+                alert("卡组不存在");
                 return;
             }
             
-            // 检查重复
             if (deck.some(card => card.front === front && card.back === back)) {
-                alert("该卡片已存在于当前卡组中！");
+                alert("卡片已存在！");
                 return;
             }
 
             deck.push({ front, back });
             
-            // 清空输入框
             frontInput.value = '';
             backInput.value = '';
 
-            // 保存并刷新
             await saveDecks();
-            switchDeck(currentDeckName, false); // 刷新当前卡组视图
-            alert(`卡片【${front}】已成功添加到【${currentDeckName}】`);
+            switchDeck(currentDeckName, false); 
+            alert(`已添加：${front}`);
         }
         
         function populateDeckSelect() {
@@ -1240,7 +1080,7 @@
             if (cards.length > 0) cards = shuffleArray([...cards]); 
             currentIndex = 0; 
             
-            if(cards.length === 0) cards = [{front: `卡组【${currentDeckName}】`, back: "卡片为空，请在下方添加"}];
+            if(cards.length === 0) cards = [{front: `卡组【${currentDeckName}】`, back: "卡片为空"}];
             
             if (shouldSave && currentDeckName !== '所有卡片 (随机)') await saveDecks(); 
             else updateUI();
@@ -1294,7 +1134,7 @@
         // ====== 手势操作逻辑 (保留左右滑动切换卡片) ======
         const cardScene = document.querySelector('.scene');
         let touchStartX = 0;
-        const SWIPE_THRESHOLD = 80; // 滑动最小距离（像素）
+        const SWIPE_THRESHOLD = 80; 
 
         cardScene.addEventListener('touchstart', (e) => {
             touchStartX = e.touches[0].clientX;
@@ -1304,32 +1144,17 @@
             const touchEndX = e.changedTouches[0].clientX;
             const deltaX = touchEndX - touchStartX;
 
-            // 动作幅度不够大，则认为是点击（翻转卡片）或误触，不处理滑动
             if (Math.abs(deltaX) < SWIPE_THRESHOLD) return; 
 
-            // 如果卡片正在翻转，则等待翻转完成，不处理滑动
             if (cardElement.classList.contains('is-flipped')) {
                 cardElement.classList.remove('is-flipped');
                 setTimeout(() => {
-                    if (deltaX > 0) {
-                        // 向右滑动 (Swipe Right) -> 上一张
-                        window.prevCard();
-                    } else {
-                        // 向左滑动 (Swipe Left) -> 下一张
-                        window.nextCard();
-                    }
+                    if (deltaX > 0) { window.prevCard(); } else { window.nextCard(); }
                 }, 200);
             } else {
-                if (deltaX > 0) {
-                    // 向右滑动 (Swipe Right) -> 上一张
-                    window.prevCard();
-                } else {
-                    // 向左滑动 (Swipe Left) -> 下一张
-                    window.nextCard();
-                }
+                if (deltaX > 0) { window.prevCard(); } else { window.nextCard(); }
             }
         });
-
 
         initializeSpeech();
         loadDecks();
