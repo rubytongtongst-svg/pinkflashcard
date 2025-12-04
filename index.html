@@ -210,7 +210,6 @@
             margin-top: 0;
         }
         
-        /* 搜索框样式 */
         .search-bar {
             width: 100%;
             padding: 10px;
@@ -275,7 +274,8 @@
     
     <div class="deck-controls deck-controls-editor">
         <button id="unlockEditorButton" class="btn-check" onclick="unlockEditor()">🔑 解锁编辑</button>
-        <button class="btn-nav editor-control" style="display: none;" onclick="viewAllWords()">📖 单词表/搜索</button>
+        <button class="btn-nav editor-control" style="display: none;" onclick="exportToPDF()">🖨️ 导出单词表(PDF)</button>
+        <button class="btn-nav editor-control" style="display: none;" onclick="viewAllWords()">📖 搜索/管理单词</button>
         <button class="btn-new-deck editor-control" style="display: none;" onclick="createNewDeck()">+ 新卡组</button>
         <button class="btn-warn editor-control" style="display: none;" onclick="deleteDeck()">- 删除卡组</button>
     </div>
@@ -329,8 +329,13 @@
             
             <input type="text" id="wordSearchInput" class="search-bar" placeholder="🔍 输入中文或日语查找..." onkeyup="filterWordList()">
             
-            <ul id="wordListContent">
-                </ul>
+            <div id="moveActions" style="margin-bottom: 15px; padding: 10px; border: 1px solid var(--unified-pink-light); border-radius: 6px; display: none; background: #fff;">
+                <label for="targetDeckSelect" style="font-size: 0.9rem; color: #64748b;">选择目标卡组:</label>
+                <select id="targetDeckSelect" style="padding: 8px; border-radius: 6px; border: 1px solid #cbd5e1; width: 60%; margin-right: 10px;"></select>
+                <button class="btn-check btn-modal-action" onclick="moveWordToDeck(this)">🚀 移动</button>
+            </div>
+            
+            <ul id="wordListContent"></ul>
             <button class="close-btn" onclick="closeWordList()">关闭列表</button>
         </div>
     </div>
@@ -389,8 +394,6 @@
         const answerInput = document.getElementById('answerInput');
         const feedbackElement = document.getElementById('feedback');
         
-        // ====== 初始化 ======
-        
         function initializeSpeech() {
             if (!('speechSynthesis' in window)) return;
             const setVoice = () => {
@@ -407,15 +410,14 @@
             else speechSynthesis.onvoiceschanged = setVoice;
         }
 
-        // 初始化静音按钮UI
         function updateMuteButtonUI() {
             const button = document.getElementById('muteButton');
             if (isMuted) {
                 button.innerHTML = '🔊 开启声音';
-                button.className = 'btn-nav'; // 灰色
+                button.className = 'btn-nav'; 
             } else {
                 button.innerHTML = '🔇 静音';
-                button.className = 'btn-warn'; // 黄色
+                button.className = 'btn-warn'; 
             }
         }
 
@@ -438,16 +440,13 @@
             }
         }
 
-        // ====== 核心云端函数 ======
-
         async function saveDecks() {
             try {
                 const docData = { decks: allDecks, currentDeck: currentDeckName };
                 await setDoc(doc(db, USER_COLLECTION, USER_DOC_ID), docData);
-                console.log("数据已保存。");
             } catch (e) {
                 console.error("保存失败:", e);
-                document.getElementById('feedback').innerText = "❌ 警告：同步失败，请检查网络！";
+                document.getElementById('feedback').innerText = "❌ 警告：同步失败！";
             }
             updateUI();
         }
@@ -467,10 +466,9 @@
                     await saveDecks(); 
                 }
             } catch (e) {
-                console.error("加载失败:", e);
                 allDecks = initialDecks;
                 currentDeckName = Object.keys(allDecks)[0];
-                alert("❗ 错误：无法连接到云数据库！正在使用本地默认数据。");
+                alert("❗ 错误：云连接失败，使用本地数据。");
             }
             updateMuteButtonUI();
             populateDeckSelect();
@@ -524,52 +522,65 @@
             } 
         }
         
-        // ====== 编辑/管理函数 ======
-
-        window.addNewCard = async function() {
-            if (!isEditorUnlocked) return alert("请先解锁编辑。");
-            const f = document.getElementById('inputFront').value.trim();
-            const b = document.getElementById('inputBack').value.trim();
-            if (!f || !b) return alert("⚠️ 请填写正面和背面。");
-
-            if (!allDecks[currentDeckName]) allDecks[currentDeckName] = [];
-            allDecks[currentDeckName].push({ front: f, back: b });
+        // ====== 导出 PDF 功能 (新增) ======
+        window.exportToPDF = function() {
+            if (!isEditorUnlocked) return;
             
-            document.getElementById('inputFront').value = '';
-            document.getElementById('inputBack').value = '';
-            await saveDecks(); 
-            switchDeck(currentDeckName, false);
-        }
+            let printContent = `
+                <html>
+                <head>
+                    <title>我的单词本 - 打印视图</title>
+                    <style>
+                        body { font-family: 'Segoe UI', sans-serif; padding: 20px; }
+                        h1 { text-align: center; color: #333; }
+                        h2 { border-bottom: 2px solid #ffc0cb; padding-bottom: 5px; margin-top: 30px; color: #555; }
+                        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+                        th, td { border: 1px solid #ddd; padding: 8px 12px; text-align: left; }
+                        th { background-color: #fff0f5; color: #333; }
+                        tr:nth-child(even) { background-color: #f9f9f9; }
+                    </style>
+                </head>
+                <body>
+                    <h1>📚 我的单词本</h1>
+            `;
 
-        window.deleteCurrentCard = async function() {
-            if (!isEditorUnlocked) return alert("请先解锁编辑。");
-            if(cards.length === 0 || cards[currentIndex].front.includes('卡组【')) return alert("没有可删除的单词！");
-            if(currentDeckName === '所有卡片 (随机)') return alert("请切换到具体卡组进行删除。");
+            // 遍历所有卡组
+            Object.keys(allDecks).sort().forEach(deckName => {
+                if (deckName === '请添加新卡组') return;
+                const deckCards = allDecks[deckName];
+                if (deckCards.length === 0) return;
 
-            if(confirm(`确定要删除这张卡片吗？`)) {
-                const cardToDelete = cards[currentIndex];
-                const originalDeck = allDecks[currentDeckName];
-                const originalIndex = originalDeck.findIndex(c => c.front === cardToDelete.front && c.back === cardToDelete.back);
-                if (originalIndex > -1) originalDeck.splice(originalIndex, 1);
+                printContent += `<h2>${deckName} (${deckCards.length})</h2>`;
+                printContent += `<table><thead><tr><th width="40%">中文/正面</th><th>日文/背面</th></tr></thead><tbody>`;
                 
-                await saveDecks(); 
-                switchDeck(currentDeckName, false);
-            }
-        }
-        
-        // --- 单词表管理功能 (增强版) ---
+                deckCards.forEach(card => {
+                    printContent += `<tr><td>${card.front}</td><td>${card.back}</td></tr>`;
+                });
+                
+                printContent += `</tbody></table>`;
+            });
 
-        // 渲染列表函数，支持搜索过滤
+            printContent += `</body></html>`;
+
+            const printWindow = window.open('', '_blank');
+            printWindow.document.write(printContent);
+            printWindow.document.close();
+            // 等待内容加载后自动打印
+            setTimeout(() => {
+                printWindow.print();
+            }, 500);
+        }
+
+        // ====== 单词管理 ======
+
         function renderWordList(filterText = '') {
             const listContent = document.getElementById('wordListContent');
             listContent.innerHTML = '';
             
-            // 获取当前显示的卡组数据
             let displayList = [];
             if (currentDeckName === '所有卡片 (随机)') {
                 Object.keys(allDecks).forEach(deck => {
                     if (deck !== '请添加新卡组') {
-                        // 给每个词加一个 sourceDeck 属性方便识别
                         displayList = displayList.concat(allDecks[deck].map(c => ({...c, sourceDeck: deck})));
                     }
                 });
@@ -577,7 +588,6 @@
                 displayList = allDecks[currentDeckName] ? allDecks[currentDeckName].map(c => ({...c, sourceDeck: currentDeckName})) : [];
             }
 
-            // 过滤
             if (filterText) {
                 const lowerFilter = filterText.toLowerCase();
                 displayList = displayList.filter(c => 
@@ -596,32 +606,25 @@
                 
                 const info = document.createElement('div');
                 info.className = 'word-info';
-                // 显示所属卡组（如果是所有卡片模式）
                 const deckInfo = currentDeckName === '所有卡片 (随机)' ? `<span style="font-size:0.8em; color:#999; display:block;">[${card.sourceDeck}]</span>` : '';
                 info.innerHTML = `${deckInfo}<strong>${card.front}</strong> ${card.back}`;
                 
                 const actions = document.createElement('div');
                 actions.className = 'word-actions';
                 
-                // 1. 移动按钮
                 const moveBtn = document.createElement('button');
                 moveBtn.className = 'btn-icon btn-icon-move';
                 moveBtn.innerText = '➡️';
-                moveBtn.title = "移动到...";
                 moveBtn.onclick = () => quickMoveWord(card.front, card.back, card.sourceDeck);
 
-                // 2. 编辑按钮
                 const editBtn = document.createElement('button');
                 editBtn.className = 'btn-icon btn-icon-edit';
                 editBtn.innerText = '✏️';
-                editBtn.title = "修改";
                 editBtn.onclick = () => editWord(card.front, card.back, card.sourceDeck);
 
-                // 3. 删除按钮 (只显示X)
                 const deleteBtn = document.createElement('button');
                 deleteBtn.className = 'btn-icon btn-icon-del';
                 deleteBtn.innerText = '❌';
-                deleteBtn.title = "删除";
                 deleteBtn.onclick = () => quickDeleteWord(card.front, card.back, card.sourceDeck);
                 
                 actions.appendChild(moveBtn);
@@ -642,7 +645,7 @@
         window.viewAllWords = function() {
             if (!isEditorUnlocked) return alert("请先解锁编辑。");
             document.getElementById('wordListTitle').innerText = `📖 ${currentDeckName} - 单词表`;
-            document.getElementById('wordSearchInput').value = ''; // 重置搜索
+            document.getElementById('wordSearchInput').value = ''; 
             renderWordList();
             document.getElementById('wordListModal').style.display = 'flex';
         }
@@ -651,18 +654,15 @@
             document.getElementById('wordListModal').style.display = 'none';
         }
 
-        // --- 快捷操作函数 ---
-
         window.quickDeleteWord = async function(front, back, deckName) {
             if(!confirm(`删除【${front}】?`)) return;
-            
             const deck = allDecks[deckName];
             const idx = deck.findIndex(c => c.front === front && c.back === back);
             if (idx > -1) {
                 deck.splice(idx, 1);
                 await saveDecks();
-                renderWordList(document.getElementById('wordSearchInput').value); // 刷新列表
-                if (currentDeckName === deckName || currentDeckName === '所有卡片 (随机)') switchDeck(currentDeckName, false); // 刷新背景卡片
+                renderWordList(document.getElementById('wordSearchInput').value); 
+                if (currentDeckName === deckName || currentDeckName === '所有卡片 (随机)') switchDeck(currentDeckName, false);
             }
         }
 
@@ -671,7 +671,6 @@
             if (newFront === null) return;
             const newBack = prompt("修改日文/背面:", back);
             if (newBack === null) return;
-
             if (!newFront || !newBack) return alert("内容不能为空");
 
             const deck = allDecks[deckName];
@@ -693,28 +692,21 @@
             
             const selection = prompt(promptMsg);
             if (!selection) return;
-            
             const targetIndex = parseInt(selection) - 1;
-            if (isNaN(targetIndex) || targetIndex < 0 || targetIndex >= availableDecks.length) {
-                return alert("编号无效。");
-            }
+            if (isNaN(targetIndex) || targetIndex < 0 || targetIndex >= availableDecks.length) return alert("编号无效。");
             
             const targetDeckName = availableDecks[targetIndex];
-            
-            // 执行移动
             const sourceDeck = allDecks[fromDeckName];
             const idx = sourceDeck.findIndex(c => c.front === front && c.back === back);
             if (idx > -1) {
-                const card = sourceDeck.splice(idx, 1)[0]; // 移除
-                allDecks[targetDeckName].push(card); // 添加
+                const card = sourceDeck.splice(idx, 1)[0]; 
+                allDecks[targetDeckName].push(card); 
                 await saveDecks();
                 alert(`已移动到【${targetDeckName}】`);
                 renderWordList(document.getElementById('wordSearchInput').value);
                 if (currentDeckName === fromDeckName || currentDeckName === '所有卡片 (随机)') switchDeck(currentDeckName, false);
             }
         }
-
-        // --- 基础导航函数 ---
 
         window.createNewDeck = async function() {
             if (!isEditorUnlocked) return alert("请先解锁编辑。");
@@ -802,8 +794,6 @@
             if (shouldSave && currentDeckName !== '所有卡片 (随机)') await saveDecks(); 
             else updateUI();
         }
-
-        // ====== 语音/答案检查 ======
 
         window.toggleMute = function() {
             isMuted = !isMuted;
