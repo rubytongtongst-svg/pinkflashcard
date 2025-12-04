@@ -30,20 +30,23 @@
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
             background-color: var(--bg-color);
             color: var(--text-main);
+            
+            /* 【优化】：严格锁定高度和溢出 */
+            height: 100vh; 
+            overflow: hidden; 
+
             display: flex;
             flex-direction: column;
             align-items: center;
-            min-height: 100vh;
+            
             margin: 0;
             /* 适配 iPhone 刘海屏的安全距离 */
             padding: 20px;
             padding-top: env(safe-area-inset-top, 20px);
             padding-bottom: env(safe-area-inset-bottom, 20px);
-            /* 禁止弹性滚动效果，更像原生App */
-            overscroll-behavior-y: none;
-            
-            /* 【核心改动】：禁止垂直滚动，防止与左右滑动切换卡片冲突 */
-            overflow-y: hidden; 
+            /* 禁止弹性滚动效果 */
+            overscroll-behavior: none; 
+            box-sizing: border-box; /* 确保 padding 在 100vh 内部 */
         }
 
         h1 { margin-bottom: 20px; font-size: 1.6rem; color: var(--unified-pink); } 
@@ -53,7 +56,8 @@
             max-width: 400px;
             height: 260px;
             perspective: 1000px;
-            margin: 20px 0;
+            /* 【优化】：减小上下 margin */
+            margin: 10px 0; 
             cursor: pointer;
             /* 确保元素不会被默认浏览器行为拖拽影响，优化滑动体验 */
             touch-action: pan-y;
@@ -170,7 +174,8 @@
             background: white;
             border-radius: 12px;
             box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
-            margin-bottom: 20px;
+            /* 【优化】：减小下方 margin */
+            margin-bottom: 10px; 
         }
 
         #answerInput {
@@ -342,7 +347,7 @@
     </div>
 
 
-    <hr style="width: 100%; max-width: 400px; border: 0; border-top: 1px solid #e2e8f0; margin-bottom: 20px;">
+    <hr style="width: 100%; max-width: 400px; border: 0; border-top: 1px solid #e2e8f0; margin-bottom: 5px;">
 
     <div class="add-section editor-control" style="display: none;">
         <h3>添加到卡组：<span id="currentDeckDisplay" style="color: var(--unified-pink);">我的自创词汇</span></h3>
