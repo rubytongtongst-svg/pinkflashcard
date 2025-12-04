@@ -107,6 +107,12 @@
             /* 移除移动端点击高亮背景 */
             -webkit-tap-highlight-color: transparent;
         }
+        
+        /* 确保声音按钮的 padding 和字体大小与旁边的 emoji 按钮一致 */
+        #muteButton { 
+            padding: 10px 15px; 
+            font-size: 0.9rem;
+        }
 
         .btn-nav { background-color: white; border: 1px solid #cbd5e1; color: #475569; }
         .btn-nav:hover { background-color: #f0f0f0; }
@@ -289,10 +295,6 @@
 
     <h1>📝 我的单词本</h1>
     
-    <div style="width: 100%; max-width: 400px; text-align: right; margin-bottom: 5px;">
-        <button id="muteButton" class="btn-nav" onclick="toggleMute()">🔊 开启声音</button>
-    </div>
-
     <div style="margin-bottom: 10px; width: 100%; max-width: 400px; text-align: left;">
         <label for="cardDeckSelect" style="display: block; font-size: 0.9rem; color: #64748b; margin-bottom: 5px;">选择卡组/分类:</label>
         <select id="cardDeckSelect" onchange="switchDeck()" style="width: 100%; padding: 10px; border-radius: 6px; border: 1px solid #cbd5e1;">
@@ -300,6 +302,10 @@
     </div>
     
     <div class="deck-controls deck-controls-editor">
+        <button id="muteButton" class="btn-nav" onclick="toggleMute()" title="开启/关闭声音">🔊</button>
+        
+        <div style="flex-grow: 1;"></div> 
+        
         <button id="unlockEditorButton" class="btn-check" onclick="unlockEditor()">🔑 解锁编辑</button>
         <button class="btn-nav editor-control" style="display: none;" onclick="exportToPDF()" title="导出PDF">🖨️</button>
         <button class="btn-nav editor-control" style="display: none;" onclick="viewAllWords()" title="搜索/管理">📖</button>
@@ -422,13 +428,16 @@
             else speechSynthesis.onvoiceschanged = setVoice;
         }
 
+        // --- 更新后的 UI 函数，只显示 Emoji ---
         function updateMuteButtonUI() {
             const button = document.getElementById('muteButton');
             if (isMuted) {
-                button.innerHTML = '🔊 开启声音';
+                // 仅显示开启声音的 Emoji
+                button.innerHTML = '🔊';
                 button.className = 'btn-nav'; 
             } else {
-                button.innerHTML = '🔇 静音';
+                // 仅显示静音的 Emoji
+                button.innerHTML = '🔇';
                 button.className = 'btn-warn'; 
             }
         }
