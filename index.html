@@ -364,6 +364,7 @@
         import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.10/firebase-app.js";
         import { getFirestore, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/9.6.10/firebase-firestore.js";
 
+        // 请注意：这里的 Firebase 配置是示例，如果您有自己的项目，请替换成您自己的配置！
         const firebaseConfig = {
             apiKey: "AIzaSyDRh1wj0UPt60ZDmVOKLc_qZ1FYE6J7TC",
             authDomain: "my-flashcard-sync.firebaseapp.com",
@@ -537,12 +538,64 @@
             } 
         }
         
-        // ====== 导出 PDF 功能 (修复移动端返回问题) ======
+        // ====== 导出 PDF 功能 (新增手动返回按钮和预览) ======
         window.exportToPDF = function() {
             if (!isEditorUnlocked) return;
             
-            // 打印页面的HTML和CSS内容
-            let printContent = `<html><head><title>单词表</title><style>body{font-family:sans-serif;padding:20px}h1{text-align:center}h2{border-bottom:2px solid #ffc0cb;margin-top:30px}table{width:100%;border-collapse:collapse}th,td{border:1px solid #ddd;padding:8px}th{background:#fff0f5}tr:nth-child(even){background:#f9f9f9}</style></head><body><h1>📚 我的单词本</h1>`;
+            // 1. 定义打印页面的样式，并新增按钮的CSS
+            let printStyle = `<style>
+                /* PDF 报告的基础样式 */
+                body{font-family:sans-serif;padding:20px}
+                h1{text-align:center; color: #ffc0cb;}
+                h2{border-bottom:2px solid #ffc0cb;margin-top:30px}
+                table{width:100%;border-collapse:collapse; margin-top: 15px;}
+                th,td{border:1px solid #ddd;padding:8px}
+                th{background:#fff0f5}
+                tr:nth-child(even){background:#f9f9f9}
+                
+                /* 预览界面按钮样式 */
+                .header-controls { 
+                    text-align: center; 
+                    padding: 15px; 
+                    margin-bottom: 20px;
+                    border-bottom: 1px solid #e0e0e0;
+                }
+                .control-button { 
+                    padding: 12px 30px; 
+                    border: none; 
+                    border-radius: 8px; 
+                    cursor: pointer; 
+                    font-size: 1rem;
+                    font-weight: 600;
+                    margin: 5px;
+                    transition: background-color 0.2s;
+                }
+                .close-button { 
+                    background-color: #f44336; /* 红色 */
+                    color: white; 
+                }
+                .print-button { 
+                    background-color: #2196F3; /* 蓝色 */
+                    color: white; 
+                }
+                /* 隐藏按钮：当浏览器进入实际打印模式时，隐藏这些控件 */
+                @media print {
+                    .header-controls { display: none !important; }
+                }
+            </style>`;
+
+            // 2. 定义手动关闭和打印按钮的 HTML
+            let controlsHTML = `
+                <div class="header-controls">
+                    <button class="control-button close-button" onclick="window.close()">❌ 关闭预览/返回单词本</button>
+                    <button class="control-button print-button" onclick="window.print()">🖨️ 打印/保存 PDF</button>
+                </div>`;
+
+            // 3. 拼接打印页面的主体内容
+            let printContent = `<html><head><title>单词表</title>${printStyle}</head><body>`;
+            printContent += controlsHTML; // 在顶部添加按钮
+
+            printContent += `<h1>📚 我的单词本</h1>`;
             
             Object.keys(allDecks).sort().forEach(deckName => {
                 if (deckName === '请添加新卡组') return;
@@ -552,21 +605,15 @@
                 deckCards.forEach(card => { printContent += `<tr><td>${card.front}</td><td>${card.back}</td></tr>`; });
                 printContent += `</tbody></table>`;
             });
+            
             printContent += `</body></html>`;
 
+            // 4. 打开新窗口并写入内容
             const printWindow = window.open('', '_blank');
             printWindow.document.write(printContent);
             printWindow.document.close();
 
-            setTimeout(() => {
-                printWindow.print(); 
-                
-                // ⭐️ 修复关键点：在打印对话框弹出后，立即尝试关闭此窗口。
-                setTimeout(() => {
-                    printWindow.close();
-                }, 100); 
-
-            }, 500);
+            // 5. 移除自动 print() 和自动 close()。让用户手动点击按钮控制。
         }
 
         function renderWordList(filterText = '') {
