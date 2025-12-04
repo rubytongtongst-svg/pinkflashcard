@@ -363,6 +363,8 @@
             border-bottom: 1px dotted #e2e8f0;
             cursor: pointer;
             transition: background-color 0.1s;
+            /* 关键：启用拖拽功能 */
+            user-select: none; 
         }
         .deck-select-list li:last-child {
             border-bottom: none;
@@ -374,6 +376,27 @@
             margin-right: 15px;
             width: 18px;
             height: 18px;
+        }
+        
+        /* 拖拽排序新增样式 */
+        .drag-handle {
+            cursor: grab;
+            padding: 0 10px;
+            font-size: 1.5rem;
+            color: #94a3b8;
+        }
+        
+        .deck-info-wrapper {
+            display: flex;
+            align-items: center;
+            flex-grow: 1;
+        }
+        
+        /* 拖拽时的样式 */
+        .dragging {
+            opacity: 0.5;
+            border: 2px dashed var(--unified-pink);
+            background-color: var(--unified-pink-light);
         }
         
     </style>
@@ -458,6 +481,11 @@
     <div id="printSelectModal" class="modal-overlay" style="display: none;">
         <div class="deck-select-modal">
             <h3>🖨️ 选择要打印的卡组</h3>
+            
+            <p style="font-size: 0.85rem; color: #64748b; margin: 0; text-align: center;">
+                💡 拖动左侧 **☰** 图标可手动排序
+            </p>
+            
             <ul id="deckSelectList" class="deck-select-list">
                 </ul>
             <div style="display: flex; gap: 10px; width: 100%;">
@@ -693,7 +721,7 @@
             } 
         }
         
-        // ====== 打印/导出 PDF 核心逻辑 ======
+        // ====== 打印/导出 PDF 核心逻辑 (包含拖拽排序) ======
 
         window.exportToPDF = function() {
             showPrintSelectModal();
@@ -703,35 +731,52 @@
             const selectList = document.getElementById('deckSelectList');
             selectList.innerHTML = '';
             
+            // 默认按名称排序，以便用户拖拽前有个稳定顺序
             const deckNames = Object.keys(allDecks).filter(name => allDecks[name].length > 0).sort();
             
-            // 1. 添加“全选”选项
+            // 1. 添加“全选”选项 (不可拖拽)
             const allOption = document.createElement('li');
-            allOption.innerHTML = `<input type="checkbox" id="check_all" checked> <label for="check_all">**全选所有词汇 (${deckNames.reduce((sum, name) => sum + allDecks[name].length, 0)})**</label>`;
+            allOption.innerHTML = `<div class="deck-info-wrapper" style="margin-left: 20px;"><input type="checkbox" id="check_all" checked> <label for="check_all">**全选所有词汇 (${deckNames.reduce((sum, name) => sum + allDecks[name].length, 0)})**</label></div>`;
             allOption.onclick = (e) => {
-                if (e.target.tagName === 'LI' || e.target.tagName === 'LABEL') {
+                // 确保点击的不是拖拽把手
+                 if (!e.target.classList.contains('drag-handle')) {
                     const checked = document.getElementById('check_all').checked;
-                    // 确保点击 li 或 label 时，切换自身的 checked 状态
-                    document.getElementById('check_all').checked = !checked;
                     document.querySelectorAll('.deck-checkbox').forEach(cb => cb.checked = !checked);
-                }
+                    document.getElementById('check_all').checked = !checked;
+                 }
             };
             selectList.appendChild(allOption);
             
-            // 2. 添加所有卡组选项
+            // 2. 添加所有卡组选项 (可拖拽)
             deckNames.forEach(name => {
                 const li = document.createElement('li');
-                li.innerHTML = `<input type="checkbox" class="deck-checkbox" id="check_${name}" data-deck-name="${name}" checked> <label for="check_${name}">${name} (${allDecks[name].length})</label>`;
+                li.setAttribute('draggable', 'true'); // 关键：设置为可拖拽
+                li.id = `deck-${name.replace(/\s/g, '_')}`; // 唯一ID
+                
+                li.innerHTML = `
+                    <div class="drag-handle">☰</div>
+                    <div class="deck-info-wrapper">
+                        <input type="checkbox" class="deck-checkbox" id="check_${name}" data-deck-name="${name}" checked> 
+                        <label for="check_${name}">${name} (${allDecks[name].length})</label>
+                    </div>
+                `;
+                
+                // 拖拽图标的点击事件只切换勾选状态
                 li.onclick = (e) => {
-                    // 仅在点击 li/label 时切换 checkbox 状态
-                    if (e.target.tagName === 'LI' || e.target.tagName === 'LABEL') {
+                    // 如果点击的不是拖拽把手
+                    if (!e.target.classList.contains('drag-handle')) {
+                         // 切换 checkbox 状态
                         const checkbox = li.querySelector('input');
                         checkbox.checked = !checkbox.checked;
                         document.getElementById('check_all').checked = false; // 取消全选
                     }
                 };
+                
                 selectList.appendChild(li);
             });
+            
+            // 3. 启用拖拽事件监听器
+            addDragListeners(selectList);
 
             document.getElementById('printSelectModal').style.display = 'flex';
         }
@@ -739,35 +784,119 @@
         window.closePrintSelectModal = function() {
             document.getElementById('printSelectModal').style.display = 'none';
         }
+        
+        // --- 拖拽排序核心逻辑 ---
+        let draggedItem = null;
+
+        function addDragListeners(list) {
+            list.querySelectorAll('li[draggable="true"]').forEach(item => {
+                item.addEventListener('dragstart', handleDragStart);
+                item.addEventListener('dragenter', handleDragEnter);
+                item.addEventListener('dragover', handleDragOver);
+                item.addEventListener('dragleave', handleDragLeave);
+                item.addEventListener('drop', handleDrop);
+                item.addEventListener('dragend', handleDragEnd);
+            });
+        }
+
+        function handleDragStart(e) {
+            draggedItem = this;
+            this.classList.add('dragging');
+            e.dataTransfer.effectAllowed = 'move';
+            e.dataTransfer.setData('text/html', this.innerHTML); 
+        }
+
+        function handleDragEnd(e) {
+            this.classList.remove('dragging');
+            document.querySelectorAll('.drag-over').forEach(el => el.classList.remove('drag-over'));
+            draggedItem = null;
+        }
+
+        function handleDragOver(e) {
+            e.preventDefault(); // 必须阻止默认行为以允许放置
+            e.dataTransfer.dropEffect = 'move';
+            
+            // 确保只处理拖拽列表内的元素
+            if (!draggedItem || !this.closest('#deckSelectList')) return;
+            
+            const target = getDragAfterElement(this.parentNode, e.clientY);
+            // 只有当目标不是拖拽中的元素时才进行插入操作
+            if (this !== draggedItem) {
+                if (target == null) {
+                    this.parentNode.appendChild(draggedItem);
+                } else {
+                    this.parentNode.insertBefore(draggedItem, target);
+                }
+            }
+        }
+        
+        function handleDragEnter(e) {
+            e.preventDefault();
+        }
+        
+        function handleDragLeave(e) {
+             // 拖拽离开时清除视觉效果
+        }
+
+        function handleDrop(e) {
+            e.stopPropagation();
+            return false;
+        }
+        
+        // 辅助函数：确定插入位置
+        function getDragAfterElement(container, y) {
+            // 只考虑可拖拽的元素
+            const draggableElements = [...container.querySelectorAll('li[draggable="true"]:not(.dragging)')];
+
+            return draggableElements.reduce((closest, child) => {
+                const box = child.getBoundingClientRect();
+                const offset = y - box.top - box.height / 2;
+                // offset < 0 表示鼠标在元素上半部分
+                if (offset < 0 && offset > closest.offset) {
+                    return { offset: offset, element: child };
+                } else {
+                    return closest;
+                }
+            }, { offset: Number.NEGATIVE_INFINITY }).element;
+        }
+        // --- 拖拽排序核心逻辑结束 ---
+
 
         window.confirmPrint = function() {
             const checkedDecks = [];
-            const allCheckbox = document.getElementById('check_all');
-            
-            if (allCheckbox.checked) {
-                // 如果全选被勾选，选中所有非空卡组
-                Object.keys(allDecks).forEach(name => {
-                    if (allDecks[name].length > 0) checkedDecks.push(name);
-                });
-            } else {
-                // 否则，收集单独勾选的卡组
-                document.querySelectorAll('.deck-checkbox').forEach(checkbox => {
-                    if (checkbox.checked) {
-                        checkedDecks.push(checkbox.dataset.deckName);
-                    }
-                });
-            }
+            const selectList = document.getElementById('deckSelectList');
+            // 关键：按当前 DOM 顺序获取所有可拖拽的列表项
+            const listItems = selectList.querySelectorAll('li[draggable="true"]'); 
 
-            if (checkedDecks.length === 0) {
+            let hasSelection = false;
+            
+            // 1. 遍历当前显示的列表顺序
+            listItems.forEach(li => {
+                const checkbox = li.querySelector('.deck-checkbox');
+                const deckName = checkbox.dataset.deckName;
+                
+                // 2. 如果卡组被勾选，则按当前列表顺序添加到 checkedDecks
+                if (checkbox.checked) {
+                    checkedDecks.push(deckName);
+                    hasSelection = true;
+                }
+            });
+
+            if (!hasSelection) {
                 alert("请至少选择一个卡组进行打印！");
                 return;
             }
 
             closePrintSelectModal();
-            generatePrintPreview(checkedDecks);
+            // 将手动排序后的卡组列表传递给打印预览
+            generatePrintPreview(checkedDecks); 
         }
 
+        // 修正：现在只接受一个参数 deckNames (它已经是手动排序后的列表)
         function generatePrintPreview(deckNames) {
+            
+            const sortedDeckNames = deckNames; 
+            
             // 1. 定义打印页面的样式
             let printStyle = `<style>
                 body{font-family:sans-serif;padding:20px}
@@ -824,10 +953,9 @@
             let printContent = `<html><head><title>选定的单词表</title>${printStyle}</head><body>`;
             printContent += controlsHTML; // 在顶部添加按钮
 
-            printContent += `<h1>📚 选定的单词表</h1>`;
+            printContent += `<h1>📚 选定的单词表 (手动排序)</h1>`;
             
-            const sortedDeckNames = deckNames.sort();
-
+            // 使用手动排序后的数组进行内容生成
             sortedDeckNames.forEach(deckName => {
                 const deckCards = allDecks[deckName];
                 if (deckCards && deckCards.length > 0) {
