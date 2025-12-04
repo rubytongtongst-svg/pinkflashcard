@@ -25,15 +25,21 @@
             --danger-color: #ef5350; 
             --info-color: #3b82f6;
         }
+        
+        /* 【修正】：锁定根元素，防止未解锁时出现滚动 */
+        html {
+            height: 100%;
+            overflow: hidden; /* 默认彻底锁定滚动 */
+        }
 
         body {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
             background-color: var(--bg-color);
             color: var(--text-main);
             
-            /* 【核心改动】：使用 height: 100vh 和 overflow-y: hidden 默认禁用滚动 */
-            height: 100vh; 
-            overflow-y: hidden; 
+            /* body 必须是 100% 高度以填充 html */
+            height: 100%; 
+            overflow-y: hidden; /* 默认禁用垂直滚动 */
             
             display: flex;
             flex-direction: column;
@@ -455,27 +461,33 @@
             const isLocked = !isEditorUnlocked;
             document.querySelectorAll('.editor-control').forEach(el => el.style.display = isLocked ? 'none' : '');
             const unlockButton = document.getElementById('unlockEditorButton');
-            if(unlockButton) unlockButton.style.display = isLocked ? 'block' : 'none'; // 使用 'block' 来确保按钮在解锁时隐藏
-
-            // 确保在 updateEditorUI 运行时也同步 body 样式，以防万一
+            if(unlockButton) unlockButton.style.display = isLocked ? 'block' : 'none'; 
+            
+            // 确保在 updateEditorUI 运行时也同步 body 样式
+            const html = document.documentElement;
             const body = document.body;
             if (isLocked) {
+                html.style.overflow = 'hidden';
+                html.style.height = '100%';
+
                 body.style.overflowY = 'hidden';
-                body.style.height = '100vh';
+                body.style.height = '100%';
             } else {
+                html.style.overflow = 'auto';
+                html.style.height = 'auto';
+
                 body.style.overflowY = 'auto';
                 body.style.height = 'auto';
             }
         }
         
-        // 【核心修改】动态控制 body 滚动
+        // 【核心修改】动态控制 HTML 和 BODY 滚动
         window.unlockEditor = function() {
             if (isEditorUnlocked) { 
-                // 如果已经解锁，但用户再次点击，询问是否锁定
                 if (confirm("编辑功能已解锁。要锁定编辑并禁用滚动吗？")) {
                     isEditorUnlocked = false;
                 } else {
-                    return; // 保持解锁状态
+                    return; 
                 }
             } else {
                 const inputPassword = prompt("请输入编辑密码以解锁功能：");
@@ -487,18 +499,26 @@
                 }
             }
 
-            // 【核心逻辑】：根据解锁状态切换 body 滚动
+            // 【核心逻辑】：根据解锁状态切换 HTML 和 BODY 滚动
+            const html = document.documentElement; // 获取 html 元素
             const body = document.body;
-            if (isEditorUnlocked) {
-                // 解锁 -> 允许滚动，以便查看添加区域
-                body.style.overflowY = 'auto'; 
-                body.style.height = 'auto'; // 允许 body 高度随内容延伸
-            } else {
-                // 锁定 -> 禁止滚动，保持卡片应用体验
-                body.style.overflowY = 'hidden';
-                body.style.height = '100vh'; // 强制 body 保持在视口高度
-            }
 
+            if (isEditorUnlocked) {
+                // 解锁 -> 允许滚动
+                html.style.overflow = 'auto'; // 释放 html 锁定
+                html.style.height = 'auto';
+                
+                body.style.overflowY = 'auto'; 
+                body.style.height = 'auto'; 
+            } else {
+                // 锁定 -> 禁止滚动
+                html.style.overflow = 'hidden'; // 锁定 html
+                html.style.height = '100%';
+
+                body.style.overflowY = 'hidden';
+                body.style.height = '100%'; // 强制 body 填充 100% html
+            }
+            
             updateEditorUI();
         }
 
@@ -853,6 +873,43 @@
                 if(currentDeckName !== '请添加新卡组') { switchDeck(currentDeckName, false); return; }
             }
             updateUI();
+        }
+        
+        window.addNewCard = async function() {
+            if (!isEditorUnlocked) return alert("请先解锁编辑。");
+
+            const frontInput = document.getElementById('inputFront');
+            const backInput = document.getElementById('inputBack');
+            const front = frontInput.value.trim();
+            const back = backInput.value.trim();
+
+            if (!front || !back) {
+                alert("正面和背面内容不能为空！");
+                return;
+            }
+
+            const deck = allDecks[currentDeckName];
+            if (!deck) {
+                alert("卡组不存在，请检查当前卡组设置。");
+                return;
+            }
+            
+            // 检查重复
+            if (deck.some(card => card.front === front && card.back === back)) {
+                alert("该卡片已存在于当前卡组中！");
+                return;
+            }
+
+            deck.push({ front, back });
+            
+            // 清空输入框
+            frontInput.value = '';
+            backInput.value = '';
+
+            // 保存并刷新
+            await saveDecks();
+            switchDeck(currentDeckName, false); // 刷新当前卡组视图
+            alert(`卡片【${front}】已成功添加到【${currentDeckName}】`);
         }
         
         function populateDeckSelect() {
