@@ -41,6 +41,9 @@
             padding-bottom: env(safe-area-inset-bottom, 20px);
             /* 禁止弹性滚动效果，更像原生App */
             overscroll-behavior-y: none;
+            
+            /* 【核心改动】：禁止垂直滚动，防止与左右滑动切换卡片冲突 */
+            overflow-y: hidden; 
         }
 
         h1 { margin-bottom: 20px; font-size: 1.6rem; color: var(--unified-pink); } 
