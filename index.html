@@ -31,10 +31,10 @@
             background-color: var(--bg-color);
             color: var(--text-main);
             
-            /* 【优化】：严格锁定高度和溢出 */
+            /* 【核心改动】：使用 height: 100vh 和 overflow-y: hidden 默认禁用滚动 */
             height: 100vh; 
-            overflow: hidden; 
-
+            overflow-y: hidden; 
+            
             display: flex;
             flex-direction: column;
             align-items: center;
@@ -46,7 +46,7 @@
             padding-bottom: env(safe-area-inset-bottom, 20px);
             /* 禁止弹性滚动效果 */
             overscroll-behavior: none; 
-            box-sizing: border-box; /* 确保 padding 在 100vh 内部 */
+            box-sizing: border-box; 
         }
 
         h1 { margin-bottom: 20px; font-size: 1.6rem; color: var(--unified-pink); } 
@@ -56,7 +56,7 @@
             max-width: 400px;
             height: 260px;
             perspective: 1000px;
-            /* 【优化】：减小上下 margin */
+            /* 优化：减小上下 margin */
             margin: 10px 0; 
             cursor: pointer;
             /* 确保元素不会被默认浏览器行为拖拽影响，优化滑动体验 */
@@ -174,7 +174,7 @@
             background: white;
             border-radius: 12px;
             box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
-            /* 【优化】：减小下方 margin */
+            /* 优化：减小下方 margin */
             margin-bottom: 10px; 
         }
 
@@ -455,19 +455,51 @@
             const isLocked = !isEditorUnlocked;
             document.querySelectorAll('.editor-control').forEach(el => el.style.display = isLocked ? 'none' : '');
             const unlockButton = document.getElementById('unlockEditorButton');
-            if(unlockButton) unlockButton.style.display = isLocked ? '' : 'none';
+            if(unlockButton) unlockButton.style.display = isLocked ? 'block' : 'none'; // 使用 'block' 来确保按钮在解锁时隐藏
+
+            // 确保在 updateEditorUI 运行时也同步 body 样式，以防万一
+            const body = document.body;
+            if (isLocked) {
+                body.style.overflowY = 'hidden';
+                body.style.height = '100vh';
+            } else {
+                body.style.overflowY = 'auto';
+                body.style.height = 'auto';
+            }
         }
         
+        // 【核心修改】动态控制 body 滚动
         window.unlockEditor = function() {
-            if (isEditorUnlocked) { alert("编辑功能已解锁。"); return; }
-            const inputPassword = prompt("请输入编辑密码以解锁功能：");
-            if (inputPassword === EDITOR_PASSWORD) {
-                isEditorUnlocked = true;
-                updateEditorUI();
-                alert("编辑功能已成功解锁！");
-            } else if (inputPassword !== null && inputPassword !== "") {
-                alert("密码错误，编辑功能未解锁。");
+            if (isEditorUnlocked) { 
+                // 如果已经解锁，但用户再次点击，询问是否锁定
+                if (confirm("编辑功能已解锁。要锁定编辑并禁用滚动吗？")) {
+                    isEditorUnlocked = false;
+                } else {
+                    return; // 保持解锁状态
+                }
+            } else {
+                const inputPassword = prompt("请输入编辑密码以解锁功能：");
+                if (inputPassword === EDITOR_PASSWORD) {
+                    isEditorUnlocked = true;
+                    alert("编辑功能已成功解锁！现在您可以向下滚动添加单词。");
+                } else if (inputPassword !== null && inputPassword !== "") {
+                    alert("密码错误，编辑功能未解锁。");
+                }
             }
+
+            // 【核心逻辑】：根据解锁状态切换 body 滚动
+            const body = document.body;
+            if (isEditorUnlocked) {
+                // 解锁 -> 允许滚动，以便查看添加区域
+                body.style.overflowY = 'auto'; 
+                body.style.height = 'auto'; // 允许 body 高度随内容延伸
+            } else {
+                // 锁定 -> 禁止滚动，保持卡片应用体验
+                body.style.overflowY = 'hidden';
+                body.style.height = '100vh'; // 强制 body 保持在视口高度
+            }
+
+            updateEditorUI();
         }
 
         async function saveDecks() {
@@ -920,6 +952,9 @@
         });
 
         cardScene.addEventListener('touchend', (e) => {
+            // 如果处于解锁状态（可以滚动），则不进行滑动切换，避免冲突
+            if (isEditorUnlocked) return;
+            
             const touchEndX = e.changedTouches[0].clientX;
             const deltaX = touchEndX - touchStartX;
 
