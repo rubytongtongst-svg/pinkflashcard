@@ -9,8 +9,8 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="单词本">
     
-    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>📝</text></svg>">
-    <link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><rect width=%22100%22 height=%22100%22 fill=%22%23ffc0cb%22/><text x=%2250%25%22 y=%2250%25%22 dominant-baseline=%22central%22 text-anchor=%22middle%22 font-size=%2270%22>📝</text></svg>">
+    <link rel="apple-touch-icon" href="app-icon.png">
+    <link rel="icon" href="app-icon.png"> 
 
     <style>
         /* 🎨 核心样式 */
@@ -26,7 +26,7 @@
             --info-color: #3b82f6;
         }
         
-        /* 【修正】：锁定根元素，防止未解锁时出现滚动 */
+        /* 【锁定】：锁定根元素，防止未解锁时出现滚动 */
         html {
             height: 100%;
             overflow: hidden; /* 默认彻底锁定滚动 */
@@ -46,23 +46,41 @@
             align-items: center;
             
             margin: 0;
-            /* 适配 iPhone 刘海屏的安全距离 */
-            padding: 20px;
+            /* 【修正 1】：移除水平 padding，只保留垂直安全区 */
+            padding: 0; 
             padding-top: env(safe-area-inset-top, 20px);
             padding-bottom: env(safe-area-inset-bottom, 20px);
+            
             /* 禁止弹性滚动效果 */
             overscroll-behavior: none; 
             box-sizing: border-box; 
         }
 
         h1 { margin-bottom: 20px; font-size: 1.6rem; color: var(--unified-pink); } 
+        
+        /* 【修正 2】：为所有主要内容添加水平 Padding，并调整 max-width */
+        h1, .deck-controls-editor, .stats, .scene, .typing-section, .add-section, 
+        /* 特别针对 select 容器 */
+        div[style*="margin-bottom: 10px; width: 100%;"] {
+            padding-left: 20px;
+            padding-right: 20px;
+            box-sizing: border-box; /* 确保 padding 不会增加总宽度 */
+            width: 100%; /* 确保它们占满父容器 */
+            /* 修正 max-width 以包含 20px 的左右 padding */
+            max-width: 440px; 
+        }
+
+        /* 修正卡组选择框的父容器样式（针对内联样式） */
+        div[style*="margin-bottom: 10px; width: 100%;"] {
+            text-align: left;
+            margin-bottom: 10px !important;
+        }
 
         .scene {
             width: 100%;
-            max-width: 400px;
+            max-width: 440px; /* 匹配上面的修正 */
             height: 260px;
             perspective: 1000px;
-            /* 优化：减小上下 margin */
             margin: 10px 0; 
             cursor: pointer;
             /* 确保元素不会被默认浏览器行为拖拽影响，优化滑动体验 */
@@ -121,7 +139,6 @@
             -webkit-tap-highlight-color: transparent;
         }
         
-        /* 确保声音按钮的 padding 和字体大小与旁边的 emoji 按钮一致 */
         #muteButton { 
             padding: 10px 15px; 
             font-size: 0.9rem;
@@ -153,7 +170,7 @@
             display: flex;
             gap: 10px;
             width: 100%;
-            max-width: 400px;
+            max-width: 400px; /* 这个 max-width 应该被上面的通用规则覆盖 */
             justify-content: flex-end;
             margin-bottom: 15px; 
         }
@@ -162,8 +179,6 @@
             gap: 10px;
             flex-wrap: wrap; 
             justify-content: flex-end;
-            width: 100%;
-            max-width: 400px;
             margin-top: 10px;
         }
 
@@ -175,14 +190,19 @@
         
         .typing-section {
             width: 100%;
-            max-width: 400px;
-            padding: 20px;
             background: white;
             border-radius: 12px;
             box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
-            /* 优化：减小下方 margin */
             margin-bottom: 10px; 
+            padding: 20px; /* 内部 padding */
         }
+        
+        /* 修正：移除 typing-section 的左右 padding，因为通用规则已添加 */
+        .typing-section {
+            padding-left: 0;
+            padding-right: 0;
+        }
+
 
         #answerInput {
             flex-grow: 1;
@@ -190,7 +210,6 @@
             border: 1px solid var(--unified-pink); 
             border-radius: 6px;
             box-sizing: border-box; 
-            /* 优化iOS输入 */
             -webkit-appearance: none; 
         }
         .typing-input-group {
@@ -222,6 +241,19 @@
             -webkit-appearance: none;
         }
         
+        /* 修正分隔线的宽度以匹配内容 */
+        hr {
+            width: 100%; 
+            max-width: 440px; 
+            border: 0; 
+            border-top: 1px solid #e2e8f0; 
+            margin-bottom: 5px;
+            /* 确保 hr 也带有 padding */
+            padding-left: 20px; 
+            padding-right: 20px;
+            box-sizing: border-box;
+        }
+        
         .modal-overlay {
             position: fixed;
             top: 0;
@@ -233,7 +265,6 @@
             justify-content: center;
             align-items: center;
             z-index: 1000;
-            /* 修复iOS上模态框滚动穿透问题 */
             overscroll-behavior: contain;
         }
         .word-list-modal {
@@ -344,23 +375,27 @@
     </div>
     
     <div class="typing-section">
-        <h3>⌨️ 打字模式 (中文 -> 日语)</h3>
-        <div class="typing-input-group">
-            <input type="text" id="answerInput" placeholder="请输入日语答案 (按 Enter 提交)" onkeydown="if(event.key === 'Enter') checkAnswer()">
-            <button class="btn-check" onclick="checkAnswer()">检查答案</button>
+        <div style="padding: 0 20px;">
+            <h3>⌨️ 打字模式 (中文 -> 日语)</h3>
+            <div class="typing-input-group">
+                <input type="text" id="answerInput" placeholder="请输入日语答案 (按 Enter 提交)" onkeydown="if(event.key === 'Enter') checkAnswer()">
+                <button class="btn-check" onclick="checkAnswer()">检查答案</button>
+            </div>
+            <div id="feedback" class="feedback"></div>
         </div>
-        <div id="feedback" class="feedback"></div>
     </div>
 
 
-    <hr style="width: 100%; max-width: 400px; border: 0; border-top: 1px solid #e2e8f0; margin-bottom: 5px;">
+    <hr>
 
     <div class="add-section editor-control" style="display: none;">
-        <h3>添加到卡组：<span id="currentDeckDisplay" style="color: var(--unified-pink);">我的自创词汇</span></h3>
-        <input type="text" id="inputFront" placeholder="正面 (中文词汇/意思)">
-        <input type="text" id="inputBack" placeholder="背面 (日语/假名/罗马音，如：先生（せんせい）)">
-        <div style="margin-top: 15px;"> 
-            <button class="btn-add" onclick="addNewCard()" style="width: 100%;">添加并保存到当前卡组</button>
+        <div style="padding: 0 20px;">
+            <h3>添加到卡组：<span id="currentDeckDisplay" style="color: var(--unified-pink);">我的自创词汇</span></h3>
+            <input type="text" id="inputFront" placeholder="正面 (中文词汇/意思)">
+            <input type="text" id="inputBack" placeholder="背面 (日语/假名/罗马音，如：先生（せんせい）)">
+            <div style="margin-top: 15px;"> 
+                <button class="btn-add" onclick="addNewCard()" style="width: 100%;">添加并保存到当前卡组</button>
+            </div>
         </div>
     </div>
 
@@ -998,20 +1033,18 @@
             }
         }
         
-        // ====== 手势操作逻辑 (替换 上一个/下一个 按钮) ======
+        // ====== 手势操作逻辑 (保留左右滑动切换卡片) ======
         const cardScene = document.querySelector('.scene');
         let touchStartX = 0;
-        const SWIPE_THRESHOLD = 80; // 滑动最小距离（像素），防止误触
+        const SWIPE_THRESHOLD = 80; // 滑动最小距离（像素）
 
         cardScene.addEventListener('touchstart', (e) => {
-            // 记录触摸开始的X坐标
             touchStartX = e.touches[0].clientX;
         });
+        
+        // 【关键】不阻止 touchmove，以保留左右滑动切换卡片的功能
 
         cardScene.addEventListener('touchend', (e) => {
-            // 如果处于解锁状态（可以滚动），则不进行滑动切换，避免冲突
-            if (isEditorUnlocked) return;
-            
             const touchEndX = e.changedTouches[0].clientX;
             const deltaX = touchEndX - touchStartX;
 
@@ -1020,7 +1053,6 @@
 
             // 如果卡片正在翻转，则等待翻转完成，不处理滑动
             if (cardElement.classList.contains('is-flipped')) {
-                // 允许用户在翻面时滑动，但先让卡片复位
                 cardElement.classList.remove('is-flipped');
                 setTimeout(() => {
                     if (deltaX > 0) {
@@ -1030,7 +1062,7 @@
                         // 向左滑动 (Swipe Left) -> 下一张
                         window.nextCard();
                     }
-                }, 200); // 稍微延迟，让用户感觉卡片翻转后切换了
+                }, 200);
             } else {
                 if (deltaX > 0) {
                     // 向右滑动 (Swipe Right) -> 上一张
