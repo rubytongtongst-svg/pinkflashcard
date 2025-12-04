@@ -299,10 +299,10 @@
     
     <div class="deck-controls deck-controls-editor">
         <button id="unlockEditorButton" class="btn-check" onclick="unlockEditor()">🔑 解锁编辑</button>
-        <button class="btn-nav editor-control" style="display: none;" onclick="exportToPDF()">🖨️ 导出PDF</button>
-        <button class="btn-nav editor-control" style="display: none;" onclick="viewAllWords()">📖 搜索/管理</button>
-        <button class="btn-new-deck editor-control" style="display: none;" onclick="createNewDeck()">+ 新卡组</button>
-        <button class="btn-warn editor-control" style="display: none;" onclick="deleteDeck()">- 删除卡组</button>
+        <button class="btn-nav editor-control" style="display: none;" onclick="exportToPDF()" title="导出PDF">🖨️</button>
+        <button class="btn-nav editor-control" style="display: none;" onclick="viewAllWords()" title="搜索/管理">📖</button>
+        <button class="btn-new-deck editor-control" style="display: none;" onclick="createNewDeck()">+ 卡组</button>
+        <button class="btn-warn editor-control" style="display: none;" onclick="deleteDeck()">- 卡组</button>
     </div>
     
     <div class="stats">当前: <span id="currentIndex">0</span> / 总数: <span id="totalCount">0</span></div>
